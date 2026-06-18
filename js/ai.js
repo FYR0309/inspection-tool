@@ -7,7 +7,7 @@ const DOUBAO_MODEL = 'ep-20260616232549-wr6bn';
 // 火山方舟图片编辑 API (images/generations)
 // 使用 Seedream 4.5 图生图，单独 API Key 授权
 const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
-const IMAGE_EDIT_MODEL = 'doubao-seedream-4-5-251128';
+const IMAGE_EDIT_MODEL = 'ep-20260619024752-vbxk7';  // 必须用 endpoint ID，不能用模型名
 const IMAGE_API_KEY = 'ark-a5912081-882c-4cbf-917b-e9cac733f0d8-894c4';
 
 function buildPrompt(text, reportType) {
