@@ -1,8 +1,8 @@
 // app.js — 应用主入口：全局状态、页面路由、事件协调
 
-import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr } from './db.js';
-import { generateDocx } from './docx-gen.js';
-import { callDoubaoOptimize } from './ai.js';
+import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr } from './db.js?v=20260619a';
+import { generateDocx } from './docx-gen.js?v=20260619a';
+import { callDoubaoOptimize } from './ai.js?v=20260619a';
 import {
   showToast, FIXED_COMPANY, FIXED_DEPARTMENT,
   renderHomePage,
@@ -11,7 +11,7 @@ import {
   renderOptimizePage,
   showEditModal,
   renderGeneratePage,
-} from './ui.js';
+} from './ui.js?v=20260619a';
 
 // ---------- 全局状态 ----------
 const state = {

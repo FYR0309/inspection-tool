@@ -1,7 +1,7 @@
 // ui.js — 所有页面视图的渲染函数
 
-import { getPresets, savePresets, getTodayStr } from './db.js';
-import { callImageEdit } from './ai.js';
+import { getPresets, savePresets, getTodayStr } from './db.js?v=20260619a';
+import { callImageEdit } from './ai.js?v=20260619a';
 
 const pageContainer = document.getElementById('page-container');
 
