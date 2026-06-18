@@ -20,7 +20,8 @@ const state = {
   headerInfo: {
     company: FIXED_COMPANY,
     department: FIXED_DEPARTMENT,
-    date: getTodayStr(),
+    date: getTodayStr(),           // 落款日期
+    inspectionDate: getTodayStr(), // 检查日期
     halfMonth: null, // 'first' | 'second' — 仅 5S 使用
   },
   currentPage: 'home',
@@ -41,6 +42,7 @@ function showHome() {
           company: FIXED_COMPANY,
           department: FIXED_DEPARTMENT,
           date: getTodayStr(),
+          inspectionDate: getTodayStr(),
           halfMonth: type === '5s' ? 'first' : null,
         };
 
@@ -215,7 +217,6 @@ function showGeneratePage() {
 
         if (action === 'share') {
           // 微信内置浏览器不支持文件分享，先下载再提示
-          // 尝试分享页面链接
           if (navigator.share && navigator.canShare && navigator.canShare({ url: window.location.href })) {
             try {
               await navigator.share({
@@ -232,8 +233,7 @@ function showGeneratePage() {
           showToast('报告已下载');
         }
 
-        // 生成后清除草稿
-        if (state.reportType) deleteDraft(state.reportType).catch(() => {});
+        // 生成后保留草稿，不清除历史
         state.items = [];
 
         setTimeout(() => showHome(), 500);
@@ -246,6 +246,10 @@ function showGeneratePage() {
     onBack: () => showItemList(),
     onEditDate: (newDate) => {
       state.headerInfo.date = newDate;
+      showGeneratePage();
+    },
+    onEditInspectionDate: (newDate) => {
+      state.headerInfo.inspectionDate = newDate;
       showGeneratePage();
     },
     onToggleHalfMonth: (half) => {

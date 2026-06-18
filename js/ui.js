@@ -402,7 +402,7 @@ function showEditModal(initialText, onConfirm) {
 
 // ---------- 生成确认页 ----------
 
-function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, onEditDate, onToggleHalfMonth }) {
+function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, onEditDate, onEditInspectionDate, onToggleHalfMonth }) {
   const labels = { safety: '安全自查报告', '5s': '现场管理自查报告', company: '公司现场检查整改报告' };
   const h = headerInfo;
   const doneCount = items.filter(i => i.afterPhoto).length;
@@ -410,24 +410,16 @@ function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, 
   // 5S 类型：半月选择 + 标题预览同步
   let halfMonthPreviewHtml = '';
   if (reportType === '5s') {
-    const { pickWorkday, formatDate } = { pickWorkday: null, formatDate: null }; // 仅占位
     const halfLabel = h.halfMonth === 'first' ? '上半月' : '下半月';
-    const startD = h.halfMonth === 'first' ? 13 : 23;
-    const endD = h.halfMonth === 'first' ? 16 : 26;
-    const d = h.date ? new Date(h.date) : new Date();
-    // 简单预览（真实日期计算在 docx-gen 中）
-    const previewDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(startD).padStart(2,'0')}~${String(endD).padStart(2,'0')}`;
+    const d = (h.inspectionDate || h.date) ? new Date(h.inspectionDate || h.date) : new Date();
     halfMonthPreviewHtml = `
       <div style="margin-top:10px;background:#f0f4ff;border-radius:8px;padding:10px;">
-        <div style="font-size:11px;color:var(--primary);margin-bottom:4px;">📝 标题预览（与生成文档同步）：</div>
+        <div style="font-size:11px;color:var(--primary);margin-bottom:4px;">📝 标题预览：</div>
         <div style="font-size:13px;font-weight:600;">${d.getFullYear()}年${d.getMonth()+1}月${FIXED_DEPARTMENT}5S现场检查通报（${halfLabel}）</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">检查区间：${previewDate}（自动避开周末）</div>
-      </div>
-      <div style="margin-top:8px;">
-        <span style="font-size:13px;color:var(--text-secondary);">切换区间：</span>
-        <button class="btn btn-sm ${h.halfMonth === 'first' ? 'btn-primary' : 'btn-outline'}" id="hm-first" style="margin-right:6px;">📅 上半月 (13-16日)</button>
-        <button class="btn btn-sm ${h.halfMonth === 'second' ? 'btn-primary' : 'btn-outline'}" id="hm-second">📅 下半月 (23-26日)</button>
-        <div style="font-size:11px;color:#999;margin-top:4px;">自动避开周末选择工作日</div>
+        <div style="margin-top:8px;">
+          <button class="btn btn-sm ${h.halfMonth === 'first' ? 'btn-primary' : 'btn-outline'}" id="hm-first" style="margin-right:8px;">📅 上半月</button>
+          <button class="btn btn-sm ${h.halfMonth === 'second' ? 'btn-primary' : 'btn-outline'}" id="hm-second">📅 下半月</button>
+        </div>
       </div>
     `;
   }
@@ -447,10 +439,16 @@ function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, 
             部门：${escapeHtml(FIXED_DEPARTMENT)}<br>
             问题数：${items.length} · 已整改：${doneCount}
           </div>
+          <div style="margin-top:10px;">
+            <label style="font-size:13px;color:var(--text-secondary);">🔍 检查日期：</label>
+            <input type="date" class="form-input" id="inspection-date" value="${h.inspectionDate || h.date || getTodayStr()}" style="width:auto;display:inline-block;">
+            <button class="btn btn-sm btn-outline" id="confirm-inspection-btn" style="margin-left:6px;">确认</button>
+            <div style="font-size:10px;color:#999;margin-top:2px;">用于确定检查区间（报告概述中的日期）</div>
+          </div>
           <div style="margin-top:8px;">
-            <label style="font-size:13px;color:var(--text-secondary);">落款日期：</label>
+            <label style="font-size:13px;color:var(--text-secondary);">✍️ 落款日期：</label>
             <input type="date" class="form-input" id="sig-date" value="${h.date || getTodayStr()}" style="width:auto;display:inline-block;">
-            <button class="btn btn-sm btn-outline" id="confirm-date-btn" style="margin-left:6px;">确认日期</button>
+            <button class="btn btn-sm btn-outline" id="confirm-date-btn" style="margin-left:6px;">确认</button>
           </div>
           ${halfMonthPreviewHtml}
         </div>
@@ -481,6 +479,19 @@ function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, 
     const newDate = document.getElementById('sig-date').value;
     if (newDate) onEditDate(newDate);
   };
+
+  if (onEditInspectionDate) {
+    document.getElementById('confirm-inspection-btn').onclick = () => {
+      const newDate = document.getElementById('inspection-date').value;
+      if (newDate) onEditInspectionDate(newDate);
+    };
+    // 如果没有单独设置检查日期，跟随落款日期变化
+    if (!h.inspectionDate) {
+      document.getElementById('sig-date').addEventListener('change', () => {
+        document.getElementById('inspection-date').value = document.getElementById('sig-date').value;
+      });
+    }
+  }
 
   if (reportType === '5s') {
     document.getElementById('hm-first').onclick = () => onToggleHalfMonth('first');

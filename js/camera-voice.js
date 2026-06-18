@@ -52,7 +52,7 @@ function compressForStorage(dataUrl) {
 function startVoiceRecognition({ onResult, onInterim, onEnd, onError }) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    onError(new Error('您的浏览器不支持语音识别'));
+    onError(new Error('当前浏览器不支持语音识别。请使用 Safari 或 Chrome 浏览器打开本页面。\n\n提示：微信内置浏览器不支持语音功能，请点击右上角「在浏览器中打开」。'));
     return null;
   }
 
@@ -75,10 +75,19 @@ function startVoiceRecognition({ onResult, onInterim, onEnd, onError }) {
 
   recognition.onerror = (event) => {
     switch (event.error) {
-      case 'not-allowed': onError(new Error('麦克风权限被拒绝，请在设置中允许')); break;
-      case 'no-speech': onError(new Error('未检测到语音，请重试')); break;
-      case 'aborted': break;
-      default: onError(new Error(`语音识别错误: ${event.error}`));
+      case 'not-allowed':
+        onError(new Error('麦克风权限被拒绝。请在手机设置 → Safari/浏览器 → 允许麦克风权限。'));
+        break;
+      case 'no-speech':
+        onError(new Error('未检测到语音，请靠近话筒再试一次。'));
+        break;
+      case 'network':
+        onError(new Error('语音识别需要网络连接，请检查网络后重试。'));
+        break;
+      case 'aborted':
+        break;
+      default:
+        onError(new Error(`语音识别失败(${event.error})。请改用文字输入，或在 Safari 浏览器中打开。`));
     }
   };
 

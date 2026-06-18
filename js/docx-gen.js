@@ -101,8 +101,9 @@ const TEMPLATE_CONFIG = {
   },
 };
 
-// 图片在单元格内的显示尺寸（EMU），模板中图片约 2 英寸宽
-const IMG_SIZE_EMU = 1828800; // ≈ 2 inches
+// 图片在单元格内的显示尺寸（像素@96DPI），模板图片约 2 英寸宽
+// docx.js ImageRun transformation 接收像素值，内部自动转换为 EMU
+const IMG_SIZE_PX = 192; // ≈ 2 inches at 96 DPI
 
 // ---------- 工具 ----------
 
@@ -163,7 +164,7 @@ function imageCell(dataUrl, widthTwips, opts = {}) {
           children: [
             new ImageRun({
               data: base64ToBytes(dataUrl),
-              transformation: { width: IMG_SIZE_EMU, height: IMG_SIZE_EMU },
+              transformation: { width: IMG_SIZE_PX, height: IMG_SIZE_PX },
               type: 'jpg',
             }),
           ],
@@ -299,22 +300,25 @@ function formatDate(date) {
 
 async function generateDocx(reportType, header, items) {
   const cfg = TEMPLATE_CONFIG[reportType] || TEMPLATE_CONFIG.safety;
-  const { company, department, date: sigDate, halfMonth } = header;
+  const { company, department, date: sigDate, inspectionDate, halfMonth } = header;
+
   const totalItems = items.length;
   const completedItems = items.filter(i => i.afterPhoto).length;
   const unfinishedItems = totalItems - completedItems;
 
+  // 检查日期（用于概述中的检查时间），回退到落款日期
+  const inspectDateObj = inspectionDate ? new Date(inspectionDate) : (sigDate ? new Date(sigDate) : new Date());
   const sigDateObj = sigDate ? new Date(sigDate) : new Date();
-  const year = sigDateObj.getFullYear();
-  const month = sigDateObj.getMonth() + 1;
+  const year = inspectDateObj.getFullYear();
+  const month = inspectDateObj.getMonth() + 1;
 
   // --- 标题和概述文字（完全匹配模板措辞） ---
   let titleText, overviewText;
 
   if (reportType === 'safety') {
     titleText = '安全自检自查整改报告';
-    const check1 = pickWorkday(year, month, sigDateObj.getDate() - 10, sigDateObj.getDate() - 8);
-    const check2 = pickWorkday(year, month, sigDateObj.getDate() - 3, sigDateObj.getDate() - 1);
+    const check1 = pickWorkday(year, month, inspectDateObj.getDate() - 10, inspectDateObj.getDate() - 8);
+    const check2 = pickWorkday(year, month, inspectDateObj.getDate() - 3, inspectDateObj.getDate() - 1);
     overviewText = `根据公司安全管理要求，我车间（部门）分别与${formatDate(check1)}、${formatDate(check2)}开展安全自检自查工作，其中提出了（${totalItems}）个整改项，并已整改完成（${completedItems}）项，未能完成整改（${unfinishedItems}）项。`;
   } else if (reportType === '5s') {
     const halfLabel = halfMonth === 'first' ? '上半月' : '下半月';
@@ -325,7 +329,7 @@ async function generateDocx(reportType, header, items) {
     overviewText = `根据红糖发（2022）22号关于印发《广西糖业集团红河制糖有限公司5S现场管理》相关要求，车间组织相关人员于${formatDate(checkWorkday)}对本车间进行${halfLabel}现场检查，现将检查情况反馈如下：本次检查需要整改的共${totalItems}项，其中已整改完成${completedItems}项，未完成整改${unfinishedItems}项。`;
   } else {
     titleText = `${department}现场整改报告`;
-    const checkD = pickWorkday(year, month, sigDateObj.getDate() - 5, sigDateObj.getDate() - 1);
+    const checkD = pickWorkday(year, month, inspectDateObj.getDate() - 5, inspectDateObj.getDate() - 1);
     overviewText = `${formatDate(checkD)}公司现场检查小组对我车间进行现场检查，提出${totalItems}个整改项，已整改完成${completedItems}项，未完成${unfinishedItems}项，附整改前后对比照片。`;
   }
 
