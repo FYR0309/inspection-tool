@@ -180,19 +180,17 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
         <span class="title">${isEdit ? '编辑问题项' : '新增问题项'}</span>
       </div>
 
-      <h3 style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;margin-top:8px;">📷 现场照片（点击拍摄）</h3>
+      <h3 style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;margin-top:8px;">📷 现场照片（点击选择拍照或相册）</h3>
       <div class="photo-slots">
         <div class="photo-slot ${beforePhoto ? 'has-photo' : ''}" id="slot-before">
           ${beforePhoto
             ? `<img src="${beforePhoto}" alt="整改前"><div style="position:absolute;bottom:4px;font-size:10px;background:rgba(0,0,0,0.6);color:#fff;padding:2px 6px;border-radius:4px;">整改前 ✓</div>`
             : '<span class="slot-icon">📷</span><span class="slot-label">问题照片</span>'}
-          <input type="file" accept="image/*" capture="environment" style="display:none;" id="input-before">
         </div>
         <div class="photo-slot ${afterPhoto ? 'has-photo' : ''}" id="slot-after">
           ${afterPhoto
             ? `<img src="${afterPhoto}" alt="整改后"><div style="position:absolute;bottom:4px;font-size:10px;background:rgba(0,0,0,0.6);color:#fff;padding:2px 6px;border-radius:4px;">整改后 ✓</div>`
             : '<span class="slot-icon">📷</span><span class="slot-label">整改后照片<br><small>(选填，上传=已整改)</small></span>'}
-          <input type="file" accept="image/*" capture="environment" style="display:none;" id="input-after">
         </div>
       </div>
 
@@ -219,39 +217,69 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
     </div>
   `;
 
-  function setupPhotoSlot(slotId, inputId) {
+  function showPhotoPicker(callback) {
+    // 移除旧弹窗
+    const old = document.getElementById('photo-picker-overlay');
+    if (old) old.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'photo-picker-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:60;display:flex;align-items:flex-end;justify-content:center;';
+    overlay.innerHTML = `
+      <div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:20px;animation:slideUp 0.2s ease-out;">
+        <h3 style="text-align:center;margin-bottom:16px;">选择图片来源</h3>
+        <button class="btn btn-primary btn-block" id="picker-camera" style="margin-bottom:10px;font-size:16px;">📷 拍照</button>
+        <button class="btn btn-outline btn-block" id="picker-gallery" style="margin-bottom:10px;font-size:16px;">🖼️ 从相册选择</button>
+        <button class="btn btn-block" id="picker-cancel" style="color:var(--text-secondary);">取消</button>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#picker-camera').onclick = () => { overlay.remove(); callback('camera'); };
+    overlay.querySelector('#picker-gallery').onclick = () => { overlay.remove(); callback('gallery'); };
+    overlay.querySelector('#picker-cancel').onclick = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  function setupPhotoSlot(slotId) {
     const slot = document.getElementById(slotId);
-    const input = document.getElementById(inputId);
-    slot.addEventListener('click', () => input.click());
-    input.addEventListener('change', async () => {
-      const file = input.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (slotId === 'slot-before') {
-          window._formBeforePhoto = e.target.result;
-        } else {
-          window._formAfterPhoto = e.target.result;
-        }
-        renderItemForm({
-          item: {
-            description: document.getElementById('item-desc')?.value || desc,
-            beforePhoto: slotId === 'slot-before' ? window._formBeforePhoto : (window._formBeforePhoto !== undefined ? window._formBeforePhoto : beforePhoto),
-            afterPhoto: slotId === 'slot-after' ? window._formAfterPhoto : (window._formAfterPhoto !== undefined ? window._formAfterPhoto : afterPhoto),
-          },
-          index,
-          onSave, onCancel, onOptimize,
-        });
-      };
-      reader.readAsDataURL(file);
+    slot.addEventListener('click', () => {
+      showPhotoPicker((source) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        if (source === 'camera') input.capture = 'environment';
+        input.onchange = () => {
+          const file = input.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            if (slotId === 'slot-before') {
+              window._formBeforePhoto = e.target.result;
+            } else {
+              window._formAfterPhoto = e.target.result;
+            }
+            renderItemForm({
+              item: {
+                description: document.getElementById('item-desc')?.value || desc,
+                beforePhoto: slotId === 'slot-before' ? window._formBeforePhoto : (window._formBeforePhoto !== undefined ? window._formBeforePhoto : beforePhoto),
+                afterPhoto: slotId === 'slot-after' ? window._formAfterPhoto : (window._formAfterPhoto !== undefined ? window._formAfterPhoto : afterPhoto),
+              },
+              index,
+              onSave, onCancel, onOptimize,
+            });
+          };
+          reader.readAsDataURL(file);
+        };
+        input.click();
+      });
     });
   }
 
   window._formBeforePhoto = beforePhoto;
   window._formAfterPhoto = afterPhoto;
 
-  setupPhotoSlot('slot-before', 'input-before');
-  setupPhotoSlot('slot-after', 'input-after');
+  setupPhotoSlot('slot-before');
+  setupPhotoSlot('slot-after');
 
   document.getElementById('item-back').onclick = onCancel;
   document.getElementById('text-focus-btn').onclick = () => document.getElementById('item-desc').focus();
@@ -379,15 +407,30 @@ function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, 
   const h = headerInfo;
   const doneCount = items.filter(i => i.afterPhoto).length;
 
-  // 5S 类型显示半月选择器
-  const halfMonthHtml = reportType === '5s' ? `
-    <div style="margin-top:8px;">
-      <span style="font-size:13px;color:var(--text-secondary);">检查区间：</span>
-      <button class="btn btn-sm ${h.halfMonth === 'first' ? 'btn-primary' : 'btn-outline'}" id="hm-first" style="margin-right:6px;">📅 上半月 (13-16日)</button>
-      <button class="btn btn-sm ${h.halfMonth === 'second' ? 'btn-primary' : 'btn-outline'}" id="hm-second">📅 下半月 (23-26日)</button>
-      <div style="font-size:11px;color:#999;margin-top:4px;">自动避开周末选择工作日</div>
-    </div>
-  ` : '';
+  // 5S 类型：半月选择 + 标题预览同步
+  let halfMonthPreviewHtml = '';
+  if (reportType === '5s') {
+    const { pickWorkday, formatDate } = { pickWorkday: null, formatDate: null }; // 仅占位
+    const halfLabel = h.halfMonth === 'first' ? '上半月' : '下半月';
+    const startD = h.halfMonth === 'first' ? 13 : 23;
+    const endD = h.halfMonth === 'first' ? 16 : 26;
+    const d = h.date ? new Date(h.date) : new Date();
+    // 简单预览（真实日期计算在 docx-gen 中）
+    const previewDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(startD).padStart(2,'0')}~${String(endD).padStart(2,'0')}`;
+    halfMonthPreviewHtml = `
+      <div style="margin-top:10px;background:#f0f4ff;border-radius:8px;padding:10px;">
+        <div style="font-size:11px;color:var(--primary);margin-bottom:4px;">📝 标题预览（与生成文档同步）：</div>
+        <div style="font-size:13px;font-weight:600;">${d.getFullYear()}年${d.getMonth()+1}月${FIXED_DEPARTMENT}5S现场检查通报（${halfLabel}）</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">检查区间：${previewDate}（自动避开周末）</div>
+      </div>
+      <div style="margin-top:8px;">
+        <span style="font-size:13px;color:var(--text-secondary);">切换区间：</span>
+        <button class="btn btn-sm ${h.halfMonth === 'first' ? 'btn-primary' : 'btn-outline'}" id="hm-first" style="margin-right:6px;">📅 上半月 (13-16日)</button>
+        <button class="btn btn-sm ${h.halfMonth === 'second' ? 'btn-primary' : 'btn-outline'}" id="hm-second">📅 下半月 (23-26日)</button>
+        <div style="font-size:11px;color:#999;margin-top:4px;">自动避开周末选择工作日</div>
+      </div>
+    `;
+  }
 
   pageContainer.innerHTML = `
     <div class="page active" id="generate-page">
@@ -409,7 +452,7 @@ function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, 
             <input type="date" class="form-input" id="sig-date" value="${h.date || getTodayStr()}" style="width:auto;display:inline-block;">
             <button class="btn btn-sm btn-outline" id="confirm-date-btn" style="margin-left:6px;">确认日期</button>
           </div>
-          ${halfMonthHtml}
+          ${halfMonthPreviewHtml}
         </div>
       </div>
 

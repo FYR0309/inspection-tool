@@ -200,32 +200,36 @@ function showGeneratePage() {
 
       try {
         const blob = await generateDocx(state.reportType, state.headerInfo, state.items);
+        const labels = { safety: '安全自查整改报告', '5s': '5S现场检查通报', company: '现场整改报告' };
+        const fileName = `${labels[state.reportType]}_${state.headerInfo.date}.docx`;
 
-        if (action === 'download') {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          const labels = { safety: '安全自查整改报告', '5s': '5S现场检查通报', company: '现场整改报告' };
-          a.download = `${labels[state.reportType]}_${state.headerInfo.date}.docx`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          showToast('报告已下载');
-        } else {
-          if (navigator.share && navigator.canShare) {
-            const file = new File([blob], `整改报告_${state.headerInfo.date}.docx`, {
-              type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            });
+        // 先下载到手机
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (action === 'share') {
+          // 微信内置浏览器不支持文件分享，先下载再提示
+          // 尝试分享页面链接
+          if (navigator.share && navigator.canShare && navigator.canShare({ url: window.location.href })) {
             try {
-              await navigator.share({ title: '整改报告', files: [file] });
-              showToast('已分享');
+              await navigator.share({
+                title: '整改报告',
+                text: `${labels[state.reportType]}已生成，文件已保存到手机。`,
+                url: window.location.href,
+              });
             } catch (e) {
-              if (e.name !== 'AbortError') showToast('分享失败，请尝试下载');
+              // 用户取消，不提示错误
             }
-          } else {
-            showToast('当前浏览器不支持分享文件，请使用下载');
           }
+          showToast('报告已保存到下载，请从微信中发送文件');
+        } else {
+          showToast('报告已下载');
         }
 
         // 生成后清除草稿
