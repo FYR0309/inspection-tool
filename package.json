@@ -1,0 +1,13 @@
+{
+  "name": "inspection-tool",
+  "version": "1.0.0",
+  "description": "安全检查报告移动端生成工具",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "dependencies": {
+    "docx": "^8.5.0"
+  }
+}

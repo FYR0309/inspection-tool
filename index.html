@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>安全检查报告工具</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <div id="app">
+    <div id="page-container"></div>
+  </div>
+
+  <!-- docx.js 本地文件，避免国外 CDN 慢 -->
+  <script src="lib/docx.umd.js"></script>
+
+  <!-- 应用模块 -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
