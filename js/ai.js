@@ -5,7 +5,16 @@ const DOUBAO_API_KEY = 'ark-4b152d9d-0ad1-4e65-838f-a52f264ff4ea-12064';
 const DOUBAO_MODEL = 'ep-20260616232549-wr6bn';
 
 // ModelScope Qwen-Image-Edit API
-const MODELSCOPE_API_BASE = 'https://api-inference.modelscope.cn/v1';
+// 手机网络直连可能被屏蔽，可设置本地中转：
+// 1. 电脑运行 python proxy_server.py
+// 2. 在网页设置里填入电脑IP，如 http://192.168.1.5:8765
+function getProxyBase() {
+  try { return localStorage.getItem('img_proxy_url') || ''; } catch(e) { return ''; }
+}
+function getApiBase() {
+  const proxy = getProxyBase();
+  return proxy ? proxy : 'https://api-inference.modelscope.cn/v1';
+}
 const MODELSCOPE_EDIT_KEY = 'ms-6cd149c2-d1bf-48b4-9d50-23cb26cc94a4';
 const MODELSCOPE_EDIT_MODEL = 'Qwen/Qwen-Image-Edit-2511';
 
@@ -156,7 +165,7 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
     report('正在提交修图任务...');
     let submitRes;
     try {
-      submitRes = await fetch(`${MODELSCOPE_API_BASE}/images/generations`, {
+      submitRes = await fetch(`${getApiBase()}/images/generations`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${MODELSCOPE_EDIT_KEY}`,
@@ -192,7 +201,7 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
 
     // 3. 轮询（最长 90 秒）
     report('AI 正在修图...');
-    const TASK_URL = `${MODELSCOPE_API_BASE}/tasks/${taskId}`;
+    const TASK_URL = `${getApiBase()}/tasks/${taskId}`;
     const start = Date.now();
     let pollCount = 0;
 
