@@ -4,19 +4,10 @@ const DOUBAO_API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completion
 const DOUBAO_API_KEY = 'ark-4b152d9d-0ad1-4e65-838f-a52f264ff4ea-12064';
 const DOUBAO_MODEL = 'ep-20260616232549-wr6bn';
 
-// ModelScope Qwen-Image-Edit API
-// 手机网络直连可能被屏蔽，可设置本地中转：
-// 1. 电脑运行 python proxy_server.py
-// 2. 在网页设置里填入电脑IP，如 http://192.168.1.5:8765
-function getProxyBase() {
-  try { return localStorage.getItem('img_proxy_url') || ''; } catch(e) { return ''; }
-}
-function getApiBase() {
-  const proxy = getProxyBase();
-  return proxy ? proxy : 'https://api-inference.modelscope.cn/v1';
-}
-const MODELSCOPE_EDIT_KEY = 'ms-6cd149c2-d1bf-48b4-9d50-23cb26cc94a4';
-const MODELSCOPE_EDIT_MODEL = 'Qwen/Qwen-Image-Edit-2511';
+// 火山方舟图片编辑 API (images/generations)
+// 使用 Seedream 模型的图生图能力，和豆包 AI 润色是同一个平台，手机可直连
+const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
+const IMAGE_EDIT_MODEL = 'doubao-seedream-4-5-251128';
 
 function buildPrompt(text, reportType) {
   const typeLabel = reportType === 'safety' ? '安全检查' : '现场管理';
@@ -137,10 +128,11 @@ function compressImageBrowser(dataUrl, maxPx = 1024, maxKB = 500) {
   });
 }
 
-// ---------- ModelScope 图生图 ----------
+// ---------- 火山方舟 图生图 ----------
 
 /**
- * 直接调用 ModelScope Qwen-Image-Edit API（浏览器端）
+ * 调用火山方舟 images/generations API（Seedream 图生图）
+ * 和豆包 AI 润色是同一平台，已验证手机可直连
  * @param {string} imageDataUrl - base64 图片
  * @param {string} prompt - 修改指令
  * @param {function} [onProgress] - 进度回调 (msg: string)
@@ -157,121 +149,93 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
       compressed = await compressImageBrowser(imageDataUrl, 1024, 450);
     } catch (e) {
       console.warn('[修图] 压缩失败，使用原图:', e.message);
-      compressed = imageDataUrl; // 压缩失败用原图
-      report('正在提交修图任务...');
+      compressed = imageDataUrl;
     }
 
-    // 2. 提交任务
-    report('正在提交修图任务...');
-    let submitRes;
+    // 2. 调用火山方舟 images/generations（同步返回，无需轮询）
+    report('AI 正在修图（约10-30秒）...');
+
+    let response;
     try {
-      submitRes = await fetch(`${getApiBase()}/images/generations`, {
+      response = await fetch(`${ARK_BASE_URL}/images/generations`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${MODELSCOPE_EDIT_KEY}`,
           'Content-Type': 'application/json',
-          'X-ModelScope-Async-Mode': 'true',
+          'Authorization': `Bearer ${DOUBAO_API_KEY}`,
         },
         body: JSON.stringify({
-          model: MODELSCOPE_EDIT_MODEL,
+          model: IMAGE_EDIT_MODEL,
           prompt: prompt.trim(),
-          image_url: compressed,
-          n: 1,
+          image: compressed,           // base64 data URL，同平台直传
           size: '1024x1024',
-          negative_prompt: '模糊, 变形, 低质量',
+          response_format: 'b64_json', // 直接返回 base64，避免二次下载
+          watermark: false,
         }),
+        signal: (typeof AbortSignal.timeout === 'function')
+          ? AbortSignal.timeout(120000)
+          : null,
       });
     } catch (e) {
+      if (e.name === 'TimeoutError') {
+        throw new Error('修图超时（2分钟），请检查网络后重试');
+      }
       throw new Error('网络连接失败，请检查网络后重试');
     }
 
-    if (!submitRes.ok) {
-      const errText = await submitRes.text().catch(() => '');
-      console.error('[修图] 提交失败:', submitRes.status, errText);
-      throw new Error(`提交失败(${submitRes.status})，请稍后重试`);
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error('[修图] API 错误:', response.status, errText);
+
+      // 给出具体错误提示
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('API Key 无权访问图片模型，可能需要开通服务');
+      }
+      if (response.status === 429) {
+        throw new Error('请求太频繁，请稍后重试');
+      }
+      if (response.status >= 500) {
+        throw new Error('AI 服务繁忙，请稍后重试');
+      }
+      throw new Error(`修图失败(${response.status})，请稍后重试`);
     }
 
-    const submitData = await submitRes.json();
-    const taskId = submitData.task_id;
-    if (!taskId) {
-      console.error('[修图] 未获取到task_id:', submitData);
-      throw new Error('服务响应异常，请重试');
-    }
-    console.log('[修图] task_id:', taskId);
+    const result = await response.json();
 
-    // 3. 轮询（最长 90 秒）
-    report('AI 正在修图...');
-    const TASK_URL = `${getApiBase()}/tasks/${taskId}`;
-    const start = Date.now();
-    let pollCount = 0;
+    // 3. 提取结果图片
+    if (result.data && result.data[0]) {
+      const item = result.data[0];
+      let resultImage;
 
-    while (Date.now() - start < 90000) {
-      await new Promise(r => setTimeout(r, 2000));
-      pollCount++;
-
-      let pollRes;
-      try {
-        pollRes = await fetch(TASK_URL, {
-          headers: {
-            'Authorization': `Bearer ${MODELSCOPE_EDIT_KEY}`,
-            'X-ModelScope-Task-Type': 'image_generation',
-          },
-        });
-      } catch (e) {
-        // 网络抖动，继续重试
-        continue;
-      }
-
-      if (!pollRes.ok) continue;
-
-      let pollData;
-      try {
-        pollData = await pollRes.json();
-      } catch (e) {
-        continue;
-      }
-
-      if (pollData.task_status === 'SUCCEED') {
+      if (item.b64_json) {
+        // 直接拿到 base64，立即可用
+        resultImage = 'data:image/jpeg;base64,' + item.b64_json;
+        console.log('[修图] 完成（base64）');
+      } else if (item.url) {
+        // 备用：下载 URL
         report('正在下载结果...');
-        const images = pollData.output_images || [];
-        const imgUrl = typeof images[0] === 'string' ? images[0] : (images[0]?.url || images[0]?.image_url || '');
-        if (!imgUrl) throw new Error('修图完成但未返回图片');
-
-        console.log('[修图] 结果URL:', imgUrl.slice(0, 80) + '...');
-
-        // 4. 下载结果图
         let imgRes;
         try {
-          imgRes = await fetch(imgUrl);
+          imgRes = await fetch(item.url);
         } catch (e) {
           throw new Error('下载结果失败，请检查网络');
         }
-
         if (!imgRes.ok) throw new Error(`下载失败(${imgRes.status})`);
-
         const blob = await imgRes.blob();
-        const resultDataUrl = await new Promise((resolve, reject) => {
+        resultImage = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = () => reject(new Error('图片读取失败'));
           reader.readAsDataURL(blob);
         });
-
-        console.log('[修图] 完成，结果大小:', (blob.size / 1024).toFixed(0) + 'KB');
-        return { success: true, image: resultDataUrl, taskId };
+        console.log('[修图] 完成（URL下载），大小:', (blob.size / 1024).toFixed(0) + 'KB');
+      } else {
+        throw new Error('修图完成但未返回图片');
       }
 
-      if (pollData.task_status === 'FAILED') {
-        throw new Error(`修图失败: ${pollData.message || '任务执行出错'}`);
-      }
-
-      // 每 5 次轮询更新进度
-      if (pollCount % 5 === 0) {
-        report(`AI 正在修图...(${Math.round((Date.now() - start) / 1000)}秒)`);
-      }
+      return { success: true, image: resultImage };
     }
 
-    throw new Error('修图超时（90秒），请检查网络后重试');
+    throw new Error('修图完成但未返回图片');
 
   } catch (e) {
     console.error('[修图] 异常:', e.message);

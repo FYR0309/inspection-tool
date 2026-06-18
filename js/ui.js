@@ -78,20 +78,10 @@ function renderHomePage({ presets, drafts, onSelectType }) {
       `).join('')}
 
       ${draftsHtml}
-      <div style="margin-top:16px;text-align:center;">
-        <span id="proxy-status" style="font-size:11px;color:var(--text-secondary);cursor:pointer;" title="点击设置修图中转">
-          ${getProxyStatusText()}
-        </span>
-      </div>
     </div>
   `;
 
   document.getElementById('home-page').addEventListener('click', (e) => {
-    // 设置按钮
-    if (e.target.id === 'proxy-status') {
-      showProxySetting();
-      return;
-    }
     const card = e.target.closest('[data-action]');
     if (!card) return;
     const action = card.dataset.action;
@@ -101,37 +91,6 @@ function renderHomePage({ presets, drafts, onSelectType }) {
       onSelectType(card.dataset.type, true);
     }
   });
-}
-
-function getProxyStatusText() {
-  try {
-    const proxy = localStorage.getItem('img_proxy_url') || '';
-    return proxy ? `🔗 修图中转：${proxy}` : '⚙️ 修图中转设置（点击配置）';
-  } catch(e) { return '⚙️ 修图中转设置'; }
-}
-
-function showProxySetting() {
-  const current = (() => { try { return localStorage.getItem('img_proxy_url') || ''; } catch(e) { return ''; } })();
-  const newProxy = prompt(
-    '修图 API 中转地址\n\n' +
-    '手机直连 ModelScope 可能被屏蔽。\n' +
-    '在电脑上运行 python proxy_server.py 后，\n' +
-    '把显示的地址填到这里（如 http://192.168.1.5:8765）\n\n' +
-    '留空 = 手机直连',
-    current
-  );
-  if (newProxy !== null) {
-    try {
-      if (newProxy.trim()) {
-        localStorage.setItem('img_proxy_url', newProxy.trim());
-      } else {
-        localStorage.removeItem('img_proxy_url');
-      }
-    } catch(e) {}
-    // 刷新状态显示
-    const el = document.getElementById('proxy-status');
-    if (el) el.textContent = getProxyStatusText();
-  }
 }
 
 // ---------- 条目列表页 ----------
