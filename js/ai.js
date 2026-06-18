@@ -167,8 +167,11 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
         body: JSON.stringify({
           model: IMAGE_EDIT_MODEL,
           prompt: prompt.trim(),
-          image: compressed,           // 单张图片用字符串，多图才用数组
+          image: [compressed],                // 必须是数组！即使是单张图片
           size: '2K',
+          response_format: 'b64_json',        // 直接返回 base64，无需下载
+          watermark: false,                   // 不要水印
+          sequential_image_generation: 'disabled',  // 单图编辑模式
         }),
         signal: (typeof AbortSignal.timeout === 'function')
           ? AbortSignal.timeout(120000)
