@@ -19,14 +19,17 @@ PORT = 8765
 
 
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
-    def do_OPTIONS(self):
-        self._cors()
-        self.send_response(204)
+    def _cors(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "*")
         self.end_headers()
 
-    def do_POST(self):
+    def do_OPTIONS(self):
         self._cors()
-        # 读取请求体
+
+    def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length else b""
 
@@ -41,25 +44,19 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 data = resp.read()
-                self.send_response(resp.status)
-                for k, v in resp.headers.items():
-                    if k.lower() not in ("transfer-encoding", "connection"):
-                        self.send_header(k, v)
-                self.end_headers()
-                self.wfile.write(data)
+                self._respond(resp.status, data, resp.headers.get("Content-Type", "application/json"))
         except urllib.error.HTTPError as e:
-            self.send_response(e.code)
-            self.end_headers()
-            self.wfile.write(e.read())
+            self._respond(e.code, e.read(), "application/json")
         except Exception as e:
-            self.send_response(502)
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
+            self._respond(502, json.dumps({"error": str(e)}).encode(), "application/json")
 
     def do_GET(self):
-        self._cors()
+        # 健康检查
+        if self.path == '/health':
+            self._respond(200, b'OK', 'text/plain')
+            return
         target_url = f"{MODELSCOPE_BASE}{self.path}"
         req = urllib.request.Request(
             target_url, method="GET",
@@ -71,42 +68,35 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = resp.read()
-                self.send_response(resp.status)
-                for k, v in resp.headers.items():
-                    if k.lower() not in ("transfer-encoding", "connection"):
-                        self.send_header(k, v)
-                self.end_headers()
-                self.wfile.write(data)
+                self._respond(resp.status, data, resp.headers.get("Content-Type", "application/json"))
+        except urllib.error.HTTPError as e:
+            self._respond(e.code, e.read(), "application/json")
         except Exception as e:
-            self.send_response(502)
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
+            self._respond(502, json.dumps({"error": str(e)}).encode(), "application/json")
 
-    def _cors(self):
+    def _respond(self, code, data, content_type="application/json"):
+        self.send_response(code)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "*")
-
-    def log_message(self, format, *args):
-        print(f"[修图中转] {args[0]}")
+        self.send_header("Content-Type", content_type)
+        self.end_headers()
+        self.wfile.write(data)
 
 
 if __name__ == "__main__":
-    # 获取本机 IP
     import socket
+
+    # 解决 Windows 中文编码问题
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
     hostname = socket.gethostname()
     local_ip = socket.gethostbyname(hostname)
 
-    print(f"""
-╔══════════════════════════════════════════╗
-║       🎨 修图 API 本地中转服务          ║
-║                                          ║
-║  手机代理地址：http://{local_ip}:{PORT}    ║
-║  电脑本机地址：http://127.0.0.1:{PORT}     ║
-║                                          ║
-║  按 Ctrl+C 停止                          ║
-╚══════════════════════════════════════════╝
-""")
+    print("=" * 50)
+    print("  修图 API 本地中转服务")
+    print(f"  手机代理地址: http://{local_ip}:{PORT}")
+    print(f"  电脑本机地址: http://127.0.0.1:{PORT}")
+    print("  按 Ctrl+C 停止")
+    print("=" * 50)
 
     server = http.server.HTTPServer(("0.0.0.0", PORT), ProxyHandler)
     try:
