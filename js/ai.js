@@ -192,9 +192,9 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
       try { const errJson = JSON.parse(errText); errMsg = errJson.error?.message || errJson.error?.code || ''; } catch {}
       if (errMsg) console.error('[修图] 错误详情:', errMsg);
 
-      // 给出具体错误提示
+      // 给出具体错误提示（带原始响应用于排查）
       if (response.status === 400) {
-        throw new Error(errMsg || `请求格式错误，请重试`);
+        throw new Error(errMsg || errText.slice(0, 200) || '请求格式错误');
       }
       if (response.status === 401 || response.status === 403) {
         throw new Error('API Key 无权访问图片模型，可能需要开通服务');
