@@ -290,8 +290,8 @@ function pickWorkday(year, month, startDay, endDay) {
 
 function formatDate(date) {
   const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
   return `${y}年${m}月${d}日`;
 }
 
@@ -338,6 +338,7 @@ async function generateDocx(reportType, header, items) {
   const table = new Table({
     rows,
     width: { size: cfg.tableWidth, type: WidthType.DXA },
+    columnWidths: cfg.columns.map(c => c.width),
   });
 
   // --- 构建文档 ---
