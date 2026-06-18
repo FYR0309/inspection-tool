@@ -7,7 +7,7 @@ const DOUBAO_MODEL = 'ep-20260616232549-wr6bn';
 // 火山方舟图片编辑 API (images/generations)
 // 使用 Seedream 模型的图生图能力，和豆包 AI 润色是同一个平台，手机可直连
 const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
-const IMAGE_EDIT_MODEL = 'doubao-seedream-4-5-251128';
+const IMAGE_EDIT_MODEL = 'ep-20260619024752-vbxk7';
 
 function buildPrompt(text, reportType) {
   const typeLabel = reportType === 'safety' ? '安全检查' : '现场管理';
