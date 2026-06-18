@@ -15,9 +15,9 @@ function buildPrompt(text, reportType) {
 
   let extraInstruction = '';
   if (reportType === 'safety') {
-    extraInstruction = '在每条润色后的文字末尾，用方括号追加风险描述，格式为 [风险：xxx]，风险描述不超过15个汉字。';
+    extraInstruction = '在每条润色后的文字末尾，直接追加风险描述（不要用方括号），格式为 风险：xxx，风险描述不超过15个汉字。';
   } else {
-    extraInstruction = '在每条润色后的文字末尾，用方括号追加影响说明，格式为 [影响：xxx]，影响描述不超过15个汉字。';
+    extraInstruction = '在每条润色后的文字末尾，直接追加影响说明（不要用方括号），格式为 影响：xxx，影响描述不超过15个汉字。';
   }
 
   return `你是一个专业的工厂安全/现场管理文档撰写助手。请将以下口语化的问题描述优化为规范的整改报告书面语言。
@@ -298,4 +298,52 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
   }
 }
 
-export { callDoubaoOptimize, callImageEdit };
+// ---------- 优化修图指令 ----------
+
+/**
+ * 调用豆包 API 将粗糙的修图指令扩展为详细的专业提示词
+ * @param {string} roughPrompt - 用户输入的简短指令
+ * @returns {Promise<string>} 优化后的详细提示词
+ */
+async function callOptimizePrompt(roughPrompt) {
+  const response = await fetch(DOUBAO_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${DOUBAO_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: DOUBAO_MODEL,
+      messages: [
+        {
+          role: 'user',
+          content: `你是一个专业的图片编辑指令优化助手。请将用户简短、口语化的修图指令扩展为详细、专业的图片编辑提示词（中文）。
+
+要求：
+1. 补充细节描述（光线、色彩、清晰度、构图等）
+2. 保持原意，不添加用户没提到的修改内容
+3. 输出控制在50字以内，简洁有效
+4. 只输出优化后的提示词，不要加任何解释
+
+用户指令：${roughPrompt}
+
+优化后的提示词：`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 200
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    console.error('[优化指令] API 错误:', response.status, errText);
+    throw new Error('AI 优化失败，请稍后重试');
+  }
+
+  const result = await response.json();
+  const content = result.choices?.[0]?.message?.content || '';
+  return content.trim() || roughPrompt;
+}
+
+export { callDoubaoOptimize, callImageEdit, callOptimizePrompt };

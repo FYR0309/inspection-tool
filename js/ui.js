@@ -1,7 +1,7 @@
 // ui.js — 所有页面视图的渲染函数
 
 import { getPresets, savePresets, getTodayStr } from './db.js?v=20260619a';
-import { callImageEdit } from './ai.js?v=20260619a';
+import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260619a';
 
 const pageContainer = document.getElementById('page-container');
 
@@ -462,10 +462,20 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
 
         <!-- 修改指令 -->
         <div class="edit-panel-section">
-          <div class="edit-panel-label">✏️ 修改指令</div>
+          <div class="edit-panel-label" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>✏️ 修改指令</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-primary btn-sm" id="edit-voice-btn" style="padding:6px 10px;font-size:15px;">🎤</button>
+              <button class="btn btn-purple btn-sm" id="edit-optimize-btn" disabled style="opacity:0.5;">✨ 润色</button>
+            </div>
+          </div>
           <textarea class="form-input edit-prompt-input" id="edit-prompt-input"
             placeholder="描述你想怎么修改这张图，如：调亮背景、去掉右下角水印、把日期抹掉…"
             rows="2"></textarea>
+          <div id="edit-voice-status" style="display:none;text-align:center;padding:8px;background:#fef3c7;border-radius:8px;margin-top:6px;font-size:13px;">
+            <span class="spinner" style="width:14px;height:14px;margin-right:6px;vertical-align:middle;"></span>
+            <span id="edit-voice-text">正在聆听...</span>
+          </div>
         </div>
 
         <!-- 快捷指令 -->
@@ -523,10 +533,64 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
     tag.classList.add('active');
   });
 
-  // 输入框变化 → 启用提交按钮
+  // 输入框变化 → 启用提交按钮 + AI润色按钮
+  const optimizePromptBtn = overlay.querySelector('#edit-optimize-btn');
   promptInput.addEventListener('input', () => {
-    submitBtn.disabled = !promptInput.value.trim();
+    const hasText = promptInput.value.trim().length > 0;
+    submitBtn.disabled = !hasText;
+    optimizePromptBtn.disabled = !hasText;
+    optimizePromptBtn.style.opacity = hasText ? '1' : '0.5';
   });
+
+  // 🎤 语音输入修图指令
+  const editVoiceBtn = overlay.querySelector('#edit-voice-btn');
+  const editVoiceStatus = overlay.querySelector('#edit-voice-status');
+  const editVoiceText = overlay.querySelector('#edit-voice-text');
+  editVoiceBtn.onclick = async () => {
+    editVoiceStatus.style.display = 'block';
+    editVoiceText.textContent = '正在聆听...';
+    try {
+      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260619a');
+      startVoiceRecognition({
+        onResult: (text) => {
+          promptInput.value = text;
+          promptInput.dispatchEvent(new Event('input'));
+          editVoiceText.textContent = text;
+          setTimeout(() => { editVoiceStatus.style.display = 'none'; }, 1000);
+        },
+        onInterim: (text) => { editVoiceText.textContent = text + ' ...'; },
+        onEnd: () => {
+          if (editVoiceText.textContent === '正在聆听...') editVoiceText.textContent = '未识别到语音';
+          setTimeout(() => { editVoiceStatus.style.display = 'none'; }, 2000);
+        },
+        onError: (err) => {
+          editVoiceText.textContent = err.message;
+          setTimeout(() => { editVoiceStatus.style.display = 'none'; }, 2500);
+        },
+      });
+    } catch (e) {
+      editVoiceText.textContent = '语音功能加载失败';
+      setTimeout(() => { editVoiceStatus.style.display = 'none'; }, 2000);
+    }
+  };
+
+  // ✨ AI 润色修图指令
+  optimizePromptBtn.onclick = async () => {
+    const rawPrompt = promptInput.value.trim();
+    if (!rawPrompt) return;
+    optimizePromptBtn.disabled = true;
+    optimizePromptBtn.textContent = '⏳';
+    try {
+      const optimized = await callOptimizePrompt(rawPrompt);
+      promptInput.value = optimized;
+      promptInput.dispatchEvent(new Event('input'));
+    } catch (e) {
+      showToast(e.message || 'AI 润色失败');
+    } finally {
+      optimizePromptBtn.disabled = false;
+      optimizePromptBtn.textContent = '✨ 润色';
+    }
+  };
 
   // 关闭
   function close() { overlay.remove(); }
