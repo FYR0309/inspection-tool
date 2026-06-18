@@ -216,21 +216,64 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
       const item = result.data[0];
       let resultImage;
 
+      // 调试日志：打印响应结构，方便排查
+      console.log('[修图] 响应 data[0] keys:', Object.keys(item).join(', '));
       if (item.b64_json) {
+        console.log('[修图] b64_json 长度:', item.b64_json.length);
+      }
+      if (item.url) {
+        console.log('[修图] url:', item.url.substring(0, 100));
+      }
+
+      if (item.b64_json && item.b64_json.length > 100) {
         // 直接拿到 base64，立即可用
         resultImage = 'data:image/jpeg;base64,' + item.b64_json;
-        console.log('[修图] 完成（base64）');
+        console.log('[修图] 完成（base64），大小:', (item.b64_json.length / 1024).toFixed(0) + 'KB');
       } else if (item.url) {
-        // 备用：下载 URL
+        // 备用：下载 URL。火山 CDN 在部分手机网络可能不通，尝试多种方式
         report('正在下载结果...');
-        let imgRes;
+        let blob = null;
+
+        // 方式1: fetch 直连
         try {
-          imgRes = await fetch(item.url);
+          const imgRes = await fetch(item.url);
+          if (imgRes.ok) {
+            blob = await imgRes.blob();
+          }
         } catch (e) {
-          throw new Error('下载结果失败，请检查网络');
+          console.warn('[修图] fetch 下载失败:', e.message);
         }
-        if (!imgRes.ok) throw new Error(`下载失败(${imgRes.status})`);
-        const blob = await imgRes.blob();
+
+        // 方式2: Image 元素加载 + Canvas 导出（绕过 CORS 限制）
+        if (!blob) {
+          console.log('[修图] 尝试 Image+Canvas 方式...');
+          try {
+            blob = await new Promise((resolve, reject) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob((b) => {
+                  if (b) resolve(b);
+                  else reject(new Error('Canvas toBlob 失败'));
+                }, 'image/jpeg', 0.9);
+              };
+              img.onerror = () => reject(new Error('Image 加载失败'));
+              img.src = item.url;
+            });
+          } catch (e) {
+            console.warn('[修图] Image+Canvas 也失败:', e.message);
+          }
+        }
+
+        if (!blob) {
+          throw new Error('下载结果失败：CDN 不可达，请刷新页面后重试（新版本已修复此问题）');
+        }
+
         resultImage = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
@@ -239,12 +282,14 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
         });
         console.log('[修图] 完成（URL下载），大小:', (blob.size / 1024).toFixed(0) + 'KB');
       } else {
+        console.error('[修图] 响应无有效图片数据:', JSON.stringify(item).substring(0, 200));
         throw new Error('修图完成但未返回图片');
       }
 
       return { success: true, image: resultImage };
     }
 
+    console.error('[修图] 响应无 data 数组:', JSON.stringify(result).substring(0, 200));
     throw new Error('修图完成但未返回图片');
 
   } catch (e) {
