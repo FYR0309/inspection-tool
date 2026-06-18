@@ -7,7 +7,7 @@ const DOUBAO_MODEL = 'ep-20260616232549-wr6bn';
 // 火山方舟图片编辑 API (images/generations)
 // 使用 Seedream 4.5 图生图，单独 API Key 授权
 const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
-const IMAGE_EDIT_MODEL = 'seedream-4-5-251128';
+const IMAGE_EDIT_MODEL = 'doubao-seedream-4-5-251128';
 const IMAGE_API_KEY = 'ark-a5912081-882c-4cbf-917b-e9cac733f0d8-894c4';
 
 function buildPrompt(text, reportType) {
@@ -169,7 +169,8 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
           prompt: prompt.trim(),
           image: [compressed],         // 必须是数组格式
           size: '2K',
-          response_format: 'b64_json', // 直接返回 base64，避免二次下载
+          sequential_image_generation: 'disabled',  // 单图编辑模式
+          response_format: 'b64_json',
           watermark: false,
         }),
         signal: (typeof AbortSignal.timeout === 'function')
