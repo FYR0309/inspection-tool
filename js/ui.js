@@ -314,6 +314,7 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
       onResult: (text) => {
         voiceText.textContent = text;
         document.getElementById('item-desc').value = text;
+        document.getElementById('item-desc').dispatchEvent(new Event('input'));
         setTimeout(() => { statusDiv.style.display = 'none'; }, 1000);
       },
       onInterim: (text) => { voiceText.textContent = text + ' ...'; },
