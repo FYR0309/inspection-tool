@@ -1,7 +1,7 @@
 // ui.js — 所有页面视图的渲染函数
 
-import { getPresets, savePresets, getTodayStr } from './db.js?v=20260619a';
-import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260619a';
+import { getPresets, savePresets, getTodayStr } from './db.js?v=20260619b';
+import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260619b';
 
 const pageContainer = document.getElementById('page-container');
 
@@ -309,7 +309,7 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
     const voiceText = document.getElementById('voice-text');
     statusDiv.style.display = 'block';
     voiceText.textContent = '正在聆听...';
-    const { startVoiceRecognition } = await import('./camera-voice.js');
+    const { startVoiceRecognition } = await import('./camera-voice.js?v=20260619b');
     window._voiceRecognition = startVoiceRecognition({
       onResult: (text) => {
         voiceText.textContent = text;
@@ -550,7 +550,7 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
     editVoiceStatus.style.display = 'block';
     editVoiceText.textContent = '正在聆听...';
     try {
-      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260619a');
+      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260619b');
       startVoiceRecognition({
         onResult: (text) => {
           promptInput.value = text;
