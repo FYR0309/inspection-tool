@@ -198,7 +198,10 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
       </div>
 
       <div class="form-group">
-        <label class="form-label">问题描述</label>
+        <label class="form-label" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>问题描述</span>
+          <button class="btn btn-purple btn-sm" id="optimize-btn-inline" ${!desc.trim() ? 'disabled' : ''} style="${!desc.trim() ? 'opacity:0.5;' : ''}">✨ AI润色</button>
+        </label>
         <textarea class="form-input" id="item-desc" placeholder="点击下方按钮语音输入或直接打字...">${escapeHtml(desc)}</textarea>
       </div>
 
@@ -211,10 +214,6 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
         <span class="spinner" style="margin-right:8px;vertical-align:middle;"></span>
         <span id="voice-text" style="font-size:14px;">正在聆听...</span>
       </div>
-
-      <button class="btn btn-purple btn-block" id="optimize-btn" ${!desc.trim() ? 'disabled' : ''} style="margin-bottom:10px;${!desc.trim() ? 'opacity:0.5;' : ''}">
-        ✨ AI 润色描述
-      </button>
 
       <button class="btn btn-success btn-block" id="save-item-btn">💾 保存</button>
     </div>
@@ -331,11 +330,19 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
     });
   };
 
-  document.getElementById('optimize-btn').onclick = () => {
+  document.getElementById('optimize-btn-inline').onclick = () => {
     const currentDesc = document.getElementById('item-desc').value.trim();
     if (!currentDesc) { showToast('请先填写问题描述'); return; }
     onOptimize(currentDesc);
   };
+
+  // 文字输入时动态启用/禁用 AI 润色按钮
+  document.getElementById('item-desc').addEventListener('input', function() {
+    const btn = document.getElementById('optimize-btn-inline');
+    const hasText = this.value.trim().length > 0;
+    btn.disabled = !hasText;
+    btn.style.opacity = hasText ? '1' : '0.5';
+  });
 
   document.getElementById('save-item-btn').onclick = () => {
     const savedItem = {
