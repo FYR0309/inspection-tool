@@ -89,4 +89,25 @@ async function callDoubaoOptimize(text, reportType) {
   return options;
 }
 
-export { callDoubaoOptimize };
+/**
+ * 调用 AI 修图 API（通过 Vercel serverless 代理）
+ * @param {string} imageDataUrl - base64 图片
+ * @param {string} prompt - 修改指令
+ * @returns {Promise<{success: boolean, image?: string, error?: string}>}
+ */
+async function callImageEdit(imageDataUrl, prompt) {
+  const response = await fetch('/api/edit-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageDataUrl, prompt }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || `服务器错误 (${response.status})`);
+  }
+
+  return response.json();
+}
+
+export { callDoubaoOptimize, callImageEdit };

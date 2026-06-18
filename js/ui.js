@@ -1,6 +1,7 @@
 // ui.js — 所有页面视图的渲染函数
 
 import { getPresets, savePresets, getTodayStr } from './db.js';
+import { callImageEdit } from './ai.js';
 
 const pageContainer = document.getElementById('page-container');
 
@@ -184,13 +185,13 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
       <div class="photo-slots">
         <div class="photo-slot ${beforePhoto ? 'has-photo' : ''}" id="slot-before" style="position:relative;">
           ${beforePhoto
-            ? `<img src="${beforePhoto}" alt="整改前"><div style="position:absolute;bottom:4px;font-size:10px;background:rgba(0,0,0,0.6);color:#fff;padding:2px 6px;border-radius:4px;">整改前 ✓</div>`
+            ? `<img src="${beforePhoto}" alt="整改前"><div style="position:absolute;bottom:4px;left:4px;font-size:10px;background:rgba(0,0,0,0.6);color:#fff;padding:2px 6px;border-radius:4px;">整改前 ✓</div><button class="slot-edit-btn" data-slot="slot-before">✨ 修图</button>`
             : '<span class="slot-icon">🖼️</span><span class="slot-label">问题照片</span>'}
           <button class="slot-camera-btn" data-slot="slot-before" style="position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.5);color:#fff;font-size:16px;line-height:32px;text-align:center;cursor:pointer;padding:0;z-index:5;">📷</button>
         </div>
         <div class="photo-slot ${afterPhoto ? 'has-photo' : ''}" id="slot-after" style="position:relative;">
           ${afterPhoto
-            ? `<img src="${afterPhoto}" alt="整改后"><div style="position:absolute;bottom:4px;font-size:10px;background:rgba(0,0,0,0.6);color:#fff;padding:2px 6px;border-radius:4px;">整改后 ✓</div>`
+            ? `<img src="${afterPhoto}" alt="整改后"><div style="position:absolute;bottom:4px;left:4px;font-size:10px;background:rgba(0,0,0,0.6);color:#fff;padding:2px 6px;border-radius:4px;">整改后 ✓</div><button class="slot-edit-btn" data-slot="slot-after">✨ 修图</button>`
             : '<span class="slot-icon">🖼️</span><span class="slot-label">整改后照片<br><small>(选填，上传=已整改)</small></span>'}
           <button class="slot-camera-btn" data-slot="slot-after" style="position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.5);color:#fff;font-size:16px;line-height:32px;text-align:center;cursor:pointer;padding:0;z-index:5;">📷</button>
         </div>
@@ -264,6 +265,33 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
       camBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         pickImage('camera');
+      });
+    }
+
+    // ✨ 修图按钮 → AI 修图面板
+    const editBtn = slot.querySelector('.slot-edit-btn');
+    if (editBtn) {
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const currentPhoto = slotId === 'slot-before' ? beforePhoto : afterPhoto;
+        if (!currentPhoto) return;
+        showImageEditPanel(slotId, currentPhoto, (editedImage) => {
+          if (slotId === 'slot-before') {
+            window._formBeforePhoto = editedImage;
+          } else {
+            window._formAfterPhoto = editedImage;
+          }
+          renderItemForm({
+            item: {
+              description: document.getElementById('item-desc')?.value || desc,
+              beforePhoto: window._formBeforePhoto !== undefined ? window._formBeforePhoto : beforePhoto,
+              afterPhoto: window._formAfterPhoto !== undefined ? window._formAfterPhoto : afterPhoto,
+            },
+            index,
+            onSave, onCancel, onOptimize,
+          });
+          showToast('修图完成');
+        });
       });
     }
   }
@@ -393,6 +421,176 @@ function showEditModal(initialText, onConfirm) {
   setTimeout(() => overlay.querySelector('#edit-textarea').focus(), 300);
 }
 
+// ---------- AI 修图面板 ----------
+
+const QUICK_PROMPTS = [
+  { label: '🔆 调亮', prompt: '调亮图片，增强光线，让画面更清晰明亮' },
+  { label: '💧 去水印', prompt: '去掉图片上的水印和日期文字' },
+  { label: '✨ 增强清晰度', prompt: '提高图片清晰度和细节，去噪，锐化' },
+  { label: '🎨 校正颜色', prompt: '校正图片颜色，让色彩自然真实' },
+  { label: '📐 裁剪杂乱', prompt: '去掉图片边缘杂乱无关的物体和背景' },
+  { label: '🔍 突出主体', prompt: '虚化背景，突出画面主体' },
+];
+
+function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
+  const slotLabel = slotId === 'slot-before' ? '整改前' : '整改后';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'edit-panel-overlay';
+  overlay.innerHTML = `
+    <div class="edit-panel">
+      <div class="edit-panel-header">
+        <span class="edit-panel-title">✨ AI 修图 — ${slotLabel}照片</span>
+        <button class="edit-panel-close" id="edit-panel-close">✕</button>
+      </div>
+
+      <div class="edit-panel-body">
+        <!-- 原图预览 -->
+        <div class="edit-panel-section">
+          <div class="edit-panel-label">📷 当前照片</div>
+          <div class="edit-panel-preview" id="edit-panel-preview">
+            <img src="${imageDataUrl}" alt="原图" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;">
+          </div>
+        </div>
+
+        <!-- 修改指令 -->
+        <div class="edit-panel-section">
+          <div class="edit-panel-label">✏️ 修改指令</div>
+          <textarea class="form-input edit-prompt-input" id="edit-prompt-input"
+            placeholder="描述你想怎么修改这张图，如：调亮背景、去掉右下角水印、把日期抹掉…"
+            rows="2"></textarea>
+        </div>
+
+        <!-- 快捷指令 -->
+        <div class="edit-panel-quick-prompts" id="edit-quick-prompts">
+          ${QUICK_PROMPTS.map(p => `
+            <button class="quick-prompt-tag" data-prompt="${escapeHtml(p.prompt)}">${p.label}</button>
+          `).join('')}
+        </div>
+
+        <!-- 操作按钮 -->
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button class="btn btn-outline btn-block" id="edit-panel-cancel">取消</button>
+          <button class="btn btn-purple btn-block" id="edit-panel-submit" disabled>🎨 开始修图</button>
+        </div>
+
+        <!-- 加载状态 -->
+        <div id="edit-panel-loading" style="display:none;text-align:center;padding:24px;">
+          <span class="spinner" style="width:32px;height:32px;"></span>
+          <p style="margin-top:12px;color:var(--text-secondary);font-size:14px;">AI 正在修图，请耐心等待…</p>
+          <p style="font-size:11px;color:#999;">通常需要 5-30 秒</p>
+        </div>
+
+        <!-- 结果预览 -->
+        <div id="edit-panel-result" style="display:none;">
+          <div class="edit-panel-label">✅ 修图结果</div>
+          <div class="edit-panel-preview" id="edit-result-preview" style="border:2px solid var(--success);"></div>
+          <div style="display:flex;gap:10px;margin-top:10px;">
+            <button class="btn btn-outline btn-block" id="edit-retry-btn">🔄 重试</button>
+            <button class="btn btn-success btn-block" id="edit-use-btn">✅ 使用此图</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const promptInput = overlay.querySelector('#edit-prompt-input');
+  const submitBtn = overlay.querySelector('#edit-panel-submit');
+  const loadingDiv = overlay.querySelector('#edit-panel-loading');
+  const resultDiv = overlay.querySelector('#edit-panel-result');
+  const previewArea = overlay.querySelector('#edit-panel-preview');
+  const quickPromptsDiv = overlay.querySelector('#edit-quick-prompts');
+  const cancelBtn = overlay.querySelector('#edit-panel-cancel');
+  const actionBtns = cancelBtn.parentElement;
+
+  // 快捷指令点击
+  overlay.querySelector('#edit-quick-prompts').addEventListener('click', (e) => {
+    const tag = e.target.closest('.quick-prompt-tag');
+    if (!tag) return;
+    promptInput.value = tag.dataset.prompt;
+    submitBtn.disabled = false;
+    // 高亮选中
+    overlay.querySelectorAll('.quick-prompt-tag').forEach(t => t.classList.remove('active'));
+    tag.classList.add('active');
+  });
+
+  // 输入框变化 → 启用提交按钮
+  promptInput.addEventListener('input', () => {
+    submitBtn.disabled = !promptInput.value.trim();
+  });
+
+  // 关闭
+  function close() { overlay.remove(); }
+  overlay.querySelector('#edit-panel-close').onclick = close;
+  cancelBtn.onclick = close;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  // 提交修图
+  submitBtn.onclick = async () => {
+    const prompt = promptInput.value.trim();
+    if (!prompt) return;
+
+    // 切换到加载态
+    previewArea.style.display = 'none';
+    quickPromptsDiv.style.display = 'none';
+    actionBtns.style.display = 'none';
+    loadingDiv.style.display = 'block';
+    resultDiv.style.display = 'none';
+
+    try {
+      const result = await callImageEdit(imageDataUrl, prompt);
+
+      if (result.success && result.image) {
+        // 显示结果
+        loadingDiv.style.display = 'none';
+        resultDiv.style.display = 'block';
+        resultDiv.querySelector('#edit-result-preview').innerHTML = `
+          <img src="${result.image}" alt="修图结果" style="width:100%;max-height:250px;object-fit:contain;border-radius:8px;">
+        `;
+
+        // 使用此图
+        resultDiv.querySelector('#edit-use-btn').onclick = () => {
+          onConfirm(result.image);
+          overlay.remove();
+        };
+
+        // 重试
+        resultDiv.querySelector('#edit-retry-btn').onclick = () => {
+          // 恢复编辑态
+          previewArea.style.display = 'block';
+          quickPromptsDiv.style.display = 'flex';
+          actionBtns.style.display = 'flex';
+          loadingDiv.style.display = 'none';
+          resultDiv.style.display = 'none';
+        };
+      } else {
+        throw new Error(result.error || '修图失败');
+      }
+    } catch (err) {
+      loadingDiv.style.display = 'none';
+      resultDiv.style.display = 'block';
+      resultDiv.querySelector('#edit-result-preview').innerHTML = `
+        <div style="text-align:center;padding:24px;color:var(--danger);">
+          <div style="font-size:32px;margin-bottom:8px;">😞</div>
+          <div style="font-size:14px;">${escapeHtml(err.message || '网络异常，请检查网络后重试')}</div>
+        </div>`;
+      resultDiv.querySelector('#edit-use-btn').style.display = 'none';
+      resultDiv.querySelector('#edit-retry-btn').textContent = '🔙 返回修改';
+      resultDiv.querySelector('#edit-retry-btn').onclick = () => {
+        previewArea.style.display = 'block';
+        quickPromptsDiv.style.display = 'flex';
+        actionBtns.style.display = 'flex';
+        loadingDiv.style.display = 'none';
+        resultDiv.style.display = 'none';
+        resultDiv.querySelector('#edit-use-btn').style.display = '';
+        resultDiv.querySelector('#edit-retry-btn').textContent = '🔄 重试';
+      };
+    }
+  };
+}
+
 // ---------- 生成确认页 ----------
 
 function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, onEditDate, onEditInspectionDate, onToggleHalfMonth }) {
@@ -497,5 +695,6 @@ export {
   renderItemForm,
   renderOptimizePage,
   showEditModal,
+  showImageEditPanel,
   renderGeneratePage,
 };
