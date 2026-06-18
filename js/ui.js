@@ -477,8 +477,7 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
         <!-- 加载状态 -->
         <div id="edit-panel-loading" style="display:none;text-align:center;padding:24px;">
           <span class="spinner" style="width:32px;height:32px;"></span>
-          <p style="margin-top:12px;color:var(--text-secondary);font-size:14px;">AI 正在修图，请耐心等待…</p>
-          <p style="font-size:11px;color:#999;">通常需要 5-30 秒</p>
+          <p id="edit-progress-text" style="margin-top:12px;color:var(--text-secondary);font-size:14px;">正在准备...</p>
         </div>
 
         <!-- 结果预览 -->
@@ -499,6 +498,7 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
   const promptInput = overlay.querySelector('#edit-prompt-input');
   const submitBtn = overlay.querySelector('#edit-panel-submit');
   const loadingDiv = overlay.querySelector('#edit-panel-loading');
+  const progressText = overlay.querySelector('#edit-progress-text');
   const resultDiv = overlay.querySelector('#edit-panel-result');
   const previewArea = overlay.querySelector('#edit-panel-preview');
   const quickPromptsDiv = overlay.querySelector('#edit-quick-prompts');
@@ -540,7 +540,10 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
     resultDiv.style.display = 'none';
 
     try {
-      const result = await callImageEdit(imageDataUrl, prompt);
+      if (progressText) progressText.textContent = '正在准备...';
+      const result = await callImageEdit(imageDataUrl, prompt, (msg) => {
+        if (progressText) progressText.textContent = msg;
+      });
 
       if (result.success && result.image) {
         // 显示结果

@@ -97,28 +97,33 @@ async function callDoubaoOptimize(text, reportType) {
 // ---------- 浏览器端图片压缩 ----------
 
 function compressImageBrowser(dataUrl, maxPx = 1024, maxKB = 500) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let w = img.width, h = img.height;
-      if (w > maxPx || h > maxPx) {
-        const ratio = Math.min(maxPx / w, maxPx / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
+      try {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxPx || h > maxPx) {
+          const ratio = Math.min(maxPx / w, maxPx / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        let quality = 0.85;
+        let result = canvas.toDataURL('image/jpeg', quality);
+        while (result.length > maxKB * 1024 && quality > 0.3) {
+          quality -= 0.1;
+          result = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(result);
+      } catch (e) {
+        reject(new Error('图片压缩失败'));
       }
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      let quality = 0.85;
-      let result = canvas.toDataURL('image/jpeg', quality);
-      while (result.length > maxKB * 1024 && quality > 0.3) {
-        quality -= 0.1;
-        result = canvas.toDataURL('image/jpeg', quality);
-      }
-      resolve(result);
     };
+    img.onerror = () => reject(new Error('图片加载失败，请重试'));
     img.src = dataUrl;
   });
 }
@@ -129,81 +134,140 @@ function compressImageBrowser(dataUrl, maxPx = 1024, maxKB = 500) {
  * 直接调用 ModelScope Qwen-Image-Edit API（浏览器端）
  * @param {string} imageDataUrl - base64 图片
  * @param {string} prompt - 修改指令
+ * @param {function} [onProgress] - 进度回调 (msg: string)
  * @returns {Promise<{success: boolean, image?: string, error?: string}>}
  */
-async function callImageEdit(imageDataUrl, prompt) {
-  // 1. 先压缩图片，减少上传时间
-  const compressed = await compressImageBrowser(imageDataUrl, 1024, 450);
+async function callImageEdit(imageDataUrl, prompt, onProgress) {
+  const report = (msg) => { console.log('[修图]', msg); if (onProgress) onProgress(msg); };
 
-  // 2. 提交异步任务
-  const submitRes = await fetch(`${MODELSCOPE_API_BASE}/images/generations`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${MODELSCOPE_EDIT_KEY}`,
-      'Content-Type': 'application/json',
-      'X-ModelScope-Async-Mode': 'true',
-    },
-    body: JSON.stringify({
-      model: MODELSCOPE_EDIT_MODEL,
-      prompt: prompt.trim(),
-      image_url: compressed,
-      n: 1,
-      size: '1024x1024',
-      negative_prompt: '模糊, 变形, 低质量',
-    }),
-  });
+  try {
+    // 1. 压缩图片
+    report('正在压缩图片...');
+    let compressed;
+    try {
+      compressed = await compressImageBrowser(imageDataUrl, 1024, 450);
+    } catch (e) {
+      console.warn('[修图] 压缩失败，使用原图:', e.message);
+      compressed = imageDataUrl; // 压缩失败用原图
+      report('正在提交修图任务...');
+    }
 
-  if (!submitRes.ok) {
-    const errText = await submitRes.text().catch(() => '');
-    throw new Error(`提交修图任务失败 (${submitRes.status}): ${errText.slice(0, 200)}`);
-  }
-
-  const submitData = await submitRes.json();
-  const taskId = submitData.task_id;
-  if (!taskId) {
-    throw new Error('未获取到修图任务ID，请重试');
-  }
-
-  // 3. 轮询任务结果（最长等 90 秒）
-  const TASK_URL = `${MODELSCOPE_API_BASE}/tasks/${taskId}`;
-  const start = Date.now();
-  while (Date.now() - start < 90000) {
-    await new Promise(r => setTimeout(r, 2000));
-
-    const pollRes = await fetch(TASK_URL, {
-      headers: {
-        'Authorization': `Bearer ${MODELSCOPE_EDIT_KEY}`,
-        'X-ModelScope-Task-Type': 'image_generation',
-      },
-    });
-
-    if (!pollRes.ok) continue;
-
-    const pollData = await pollRes.json();
-    if (pollData.task_status === 'SUCCEED') {
-      const images = pollData.output_images || [];
-      const imgUrl = typeof images[0] === 'string' ? images[0] : (images[0]?.url || images[0]?.image_url || '');
-      if (!imgUrl) throw new Error('修图完成但未返回图片');
-
-      // 4. 下载结果图并转 base64
-      const imgRes = await fetch(imgUrl);
-      if (!imgRes.ok) throw new Error('下载修图结果失败');
-      const blob = await imgRes.blob();
-      const resultDataUrl = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
+    // 2. 提交任务
+    report('正在提交修图任务...');
+    let submitRes;
+    try {
+      submitRes = await fetch(`${MODELSCOPE_API_BASE}/images/generations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${MODELSCOPE_EDIT_KEY}`,
+          'Content-Type': 'application/json',
+          'X-ModelScope-Async-Mode': 'true',
+        },
+        body: JSON.stringify({
+          model: MODELSCOPE_EDIT_MODEL,
+          prompt: prompt.trim(),
+          image_url: compressed,
+          n: 1,
+          size: '1024x1024',
+          negative_prompt: '模糊, 变形, 低质量',
+        }),
       });
-
-      return { success: true, image: resultDataUrl, taskId };
+    } catch (e) {
+      throw new Error('网络连接失败，请检查网络后重试');
     }
 
-    if (pollData.task_status === 'FAILED') {
-      throw new Error(`修图失败: ${pollData.message || '任务执行出错'}`);
+    if (!submitRes.ok) {
+      const errText = await submitRes.text().catch(() => '');
+      console.error('[修图] 提交失败:', submitRes.status, errText);
+      throw new Error(`提交失败(${submitRes.status})，请稍后重试`);
     }
+
+    const submitData = await submitRes.json();
+    const taskId = submitData.task_id;
+    if (!taskId) {
+      console.error('[修图] 未获取到task_id:', submitData);
+      throw new Error('服务响应异常，请重试');
+    }
+    console.log('[修图] task_id:', taskId);
+
+    // 3. 轮询（最长 90 秒）
+    report('AI 正在修图...');
+    const TASK_URL = `${MODELSCOPE_API_BASE}/tasks/${taskId}`;
+    const start = Date.now();
+    let pollCount = 0;
+
+    while (Date.now() - start < 90000) {
+      await new Promise(r => setTimeout(r, 2000));
+      pollCount++;
+
+      let pollRes;
+      try {
+        pollRes = await fetch(TASK_URL, {
+          headers: {
+            'Authorization': `Bearer ${MODELSCOPE_EDIT_KEY}`,
+            'X-ModelScope-Task-Type': 'image_generation',
+          },
+        });
+      } catch (e) {
+        // 网络抖动，继续重试
+        continue;
+      }
+
+      if (!pollRes.ok) continue;
+
+      let pollData;
+      try {
+        pollData = await pollRes.json();
+      } catch (e) {
+        continue;
+      }
+
+      if (pollData.task_status === 'SUCCEED') {
+        report('正在下载结果...');
+        const images = pollData.output_images || [];
+        const imgUrl = typeof images[0] === 'string' ? images[0] : (images[0]?.url || images[0]?.image_url || '');
+        if (!imgUrl) throw new Error('修图完成但未返回图片');
+
+        console.log('[修图] 结果URL:', imgUrl.slice(0, 80) + '...');
+
+        // 4. 下载结果图
+        let imgRes;
+        try {
+          imgRes = await fetch(imgUrl);
+        } catch (e) {
+          throw new Error('下载结果失败，请检查网络');
+        }
+
+        if (!imgRes.ok) throw new Error(`下载失败(${imgRes.status})`);
+
+        const blob = await imgRes.blob();
+        const resultDataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('图片读取失败'));
+          reader.readAsDataURL(blob);
+        });
+
+        console.log('[修图] 完成，结果大小:', (blob.size / 1024).toFixed(0) + 'KB');
+        return { success: true, image: resultDataUrl, taskId };
+      }
+
+      if (pollData.task_status === 'FAILED') {
+        throw new Error(`修图失败: ${pollData.message || '任务执行出错'}`);
+      }
+
+      // 每 5 次轮询更新进度
+      if (pollCount % 5 === 0) {
+        report(`AI 正在修图...(${Math.round((Date.now() - start) / 1000)}秒)`);
+      }
+    }
+
+    throw new Error('修图超时（90秒），请检查网络后重试');
+
+  } catch (e) {
+    console.error('[修图] 异常:', e.message);
+    throw e;
   }
-
-  throw new Error('修图超时，请检查网络后重试');
 }
 
 export { callDoubaoOptimize, callImageEdit };
