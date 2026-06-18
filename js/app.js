@@ -4,9 +4,8 @@ import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, 
 import { generateDocx } from './docx-gen.js';
 import { callDoubaoOptimize } from './ai.js';
 import {
-  showToast,
+  showToast, FIXED_COMPANY, FIXED_DEPARTMENT,
   renderHomePage,
-  showPresetsEditor,
   renderItemList,
   renderItemForm,
   renderOptimizePage,
@@ -19,74 +18,45 @@ const state = {
   reportType: null,
   items: [],
   headerInfo: {
-    company: '',
-    department: '',
-    date: '',
-    checkDates: '',
-    totalItems: 0,
-    completedItems: 0,
+    company: FIXED_COMPANY,
+    department: FIXED_DEPARTMENT,
+    date: getTodayStr(),
+    halfMonth: null, // 'first' | 'second' — 仅 5S 使用
   },
-  presets: getPresets(),
   currentPage: 'home',
 };
 
-// ---------- Toast 挂到全局供 ui.js 调用 ----------
 window._showToast = showToast;
 
-// ---------- 页面路由 ----------
-
-function navigateTo(page) {
-  state.currentPage = page;
-}
-
-// ---------- 首页逻辑 ----------
+// ---------- 首页 ----------
 
 function showHome() {
-  navigateTo('home');
-
   listDrafts().then(drafts => {
     renderHomePage({
-      presets: state.presets,
       drafts,
       onSelectType: (type, resume) => {
         state.reportType = type;
+
+        const defaults = {
+          company: FIXED_COMPANY,
+          department: FIXED_DEPARTMENT,
+          date: getTodayStr(),
+          halfMonth: type === '5s' ? 'first' : null,
+        };
 
         if (resume) {
           getDraft(type).then(draftData => {
             if (draftData) {
               state.items = draftData.items || [];
-              state.headerInfo = {
-                ...state.headerInfo,
-                ...draftData.headerInfo,
-                company: state.presets.company,
-                department: state.presets.department,
-                date: draftData.headerInfo?.date || getTodayStr(),
-              };
+              state.headerInfo = { ...defaults, ...draftData.headerInfo };
             }
             showItemList();
           });
         } else {
           state.items = [];
-          state.headerInfo = {
-            company: state.presets.company,
-            department: state.presets.department,
-            date: getTodayStr(),
-            checkDates: getTodayStr(),
-            totalItems: 0,
-            completedItems: 0,
-          };
+          state.headerInfo = defaults;
           showItemList();
         }
-      },
-      onEditPresets: () => {
-        showPresetsEditor(state.presets, (newPresets) => {
-          state.presets = newPresets;
-          savePresets(newPresets);
-          state.headerInfo.company = newPresets.company;
-          state.headerInfo.department = newPresets.department;
-          showToast('预设已保存');
-          showHome();
-        });
       },
     });
   });
@@ -95,8 +65,6 @@ function showHome() {
 // ---------- 条目列表 ----------
 
 function showItemList() {
-  navigateTo('list');
-
   const saveCurrentDraft = () => {
     if (state.reportType && state.items.length > 0) {
       saveDraft(state.reportType, {
@@ -134,7 +102,6 @@ function showItemList() {
 // ---------- 新增/编辑条目 ----------
 
 function showItemForm(editIndex) {
-  navigateTo('item');
   const item = editIndex !== undefined ? state.items[editIndex] : null;
 
   renderItemForm({
@@ -162,23 +129,14 @@ function showItemForm(editIndex) {
 // ---------- AI 润色 ----------
 
 async function showOptimizePage(text) {
-  navigateTo('optimize');
-
-  // 先渲染加载状态
   renderOptimizePage({
     text,
     reportType: state.reportType,
     options: ['正在生成...', '正在生成...', '正在生成...'],
-    onSelect: () => {},
-    onEdit: () => {},
-    onRetry: () => {},
-    onBack: () => {
-      const lastIdx = state.items.length > 0 ? state.items.length - 1 : undefined;
-      showItemForm(lastIdx);
-    },
+    onSelect: () => {}, onEdit: () => {}, onRetry: () => {},
+    onBack: () => showItemForm(state.items.length > 0 ? state.items.length - 1 : undefined),
   });
 
-  // 显示 spinner
   const container = document.getElementById('options-container');
   if (container) {
     container.innerHTML = `
@@ -191,7 +149,6 @@ async function showOptimizePage(text) {
   try {
     const options = await callDoubaoOptimize(text, state.reportType);
 
-    // 重新渲染选择页面
     renderOptimizePage({
       text,
       reportType: state.reportType,
@@ -222,13 +179,8 @@ async function showOptimizePage(text) {
           }, 100);
         });
       },
-      onRetry: () => {
-        showOptimizePage(text);
-      },
-      onBack: () => {
-        const lastIdx = state.items.length > 0 ? state.items.length - 1 : undefined;
-        showItemForm(lastIdx);
-      },
+      onRetry: () => showOptimizePage(text),
+      onBack: () => showItemForm(state.items.length > 0 ? state.items.length - 1 : undefined),
     });
   } catch (e) {
     showToast('网络异常，请检查网络后重试');
@@ -239,11 +191,6 @@ async function showOptimizePage(text) {
 // ---------- 生成报告 ----------
 
 function showGeneratePage() {
-  navigateTo('generate');
-
-  state.headerInfo.totalItems = state.items.length;
-  state.headerInfo.completedItems = state.items.filter(i => i.afterPhoto).length;
-
   renderGeneratePage({
     reportType: state.reportType,
     headerInfo: state.headerInfo,
@@ -266,21 +213,15 @@ function showGeneratePage() {
           URL.revokeObjectURL(url);
           showToast('报告已下载');
         } else {
-          // 微信分享
           if (navigator.share && navigator.canShare) {
             const file = new File([blob], `整改报告_${state.headerInfo.date}.docx`, {
               type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             });
             try {
-              await navigator.share({
-                title: '整改报告',
-                files: [file],
-              });
+              await navigator.share({ title: '整改报告', files: [file] });
               showToast('已分享');
             } catch (e) {
-              if (e.name !== 'AbortError') {
-                showToast('分享失败，请尝试下载');
-              }
+              if (e.name !== 'AbortError') showToast('分享失败，请尝试下载');
             }
           } else {
             showToast('当前浏览器不支持分享文件，请使用下载');
@@ -288,12 +229,8 @@ function showGeneratePage() {
         }
 
         // 生成后清除草稿
-        if (state.reportType) {
-          deleteDraft(state.reportType).catch(() => {});
-        }
+        if (state.reportType) deleteDraft(state.reportType).catch(() => {});
         state.items = [];
-        state.headerInfo.totalItems = 0;
-        state.headerInfo.completedItems = 0;
 
         setTimeout(() => showHome(), 500);
 
@@ -303,14 +240,13 @@ function showGeneratePage() {
       }
     },
     onBack: () => showItemList(),
-    onEditHeader: () => {
-      showPresetsEditor(state.headerInfo, (newInfo) => {
-        state.headerInfo.company = newInfo.company;
-        state.headerInfo.department = newInfo.department;
-        state.presets = newInfo;
-        savePresets(newInfo);
-        showGeneratePage();
-      });
+    onEditDate: (newDate) => {
+      state.headerInfo.date = newDate;
+      showGeneratePage();
+    },
+    onToggleHalfMonth: (half) => {
+      state.headerInfo.halfMonth = half;
+      showGeneratePage();
     },
   });
 }
@@ -318,9 +254,6 @@ function showGeneratePage() {
 // ---------- 启动 ----------
 
 function init() {
-  state.presets = getPresets();
-  state.headerInfo.company = state.presets.company;
-  state.headerInfo.department = state.presets.department;
   state.headerInfo.date = getTodayStr();
   showHome();
 }
