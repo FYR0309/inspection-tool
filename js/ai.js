@@ -5,9 +5,10 @@ const DOUBAO_API_KEY = 'ark-4b152d9d-0ad1-4e65-838f-a52f264ff4ea-12064';
 const DOUBAO_MODEL = 'ep-20260616232549-wr6bn';
 
 // 火山方舟图片编辑 API (images/generations)
-// 使用 Seedream 模型的图生图能力，和豆包 AI 润色是同一个平台，手机可直连
+// 使用 Seedream 4.5 图生图，单独 API Key 授权
 const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
 const IMAGE_EDIT_MODEL = 'doubao-seedream-4-5-251128';
+const IMAGE_API_KEY = 'ark-a5912081-882c-4cbf-917b-e9cac733f0d8-894c4';
 
 function buildPrompt(text, reportType) {
   const typeLabel = reportType === 'safety' ? '安全检查' : '现场管理';
@@ -161,7 +162,7 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DOUBAO_API_KEY}`,
+          'Authorization': `Bearer ${IMAGE_API_KEY}`,
         },
         body: JSON.stringify({
           model: IMAGE_EDIT_MODEL,
