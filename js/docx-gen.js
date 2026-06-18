@@ -1,4 +1,5 @@
 // docx-gen.js — Word 文档生成（依赖全局 docx 对象）
+// 排版严格匹配原始 Word 模板
 
 const { Document, Packer, Paragraph, Table, TableRow, TableCell,
         ImageRun, TextRun, AlignmentType, WidthType, BorderStyle,
@@ -11,7 +12,8 @@ function compressImageForDocx(dataUrl) {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX_DIM = 800;
+      // 模板图片约 2 英寸宽 ≈ 1800 EMU，分辨率控制在合理范围
+      const MAX_DIM = 1000;
       let w = img.width, h = img.height;
       if (w > MAX_DIM || h > MAX_DIM) {
         const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
@@ -22,9 +24,10 @@ function compressImageForDocx(dataUrl) {
       canvas.height = h;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
-      let quality = 0.8;
+      // 目标：低于 450KB，保证清晰度
+      let quality = 0.85;
       let result = canvas.toDataURL('image/jpeg', quality);
-      while (result.length > 450 * 1024 && quality > 0.25) {
+      while (result.length > 450 * 1024 && quality > 0.3) {
         quality -= 0.1;
         result = canvas.toDataURL('image/jpeg', quality);
       }
@@ -34,11 +37,72 @@ function compressImageForDocx(dataUrl) {
   });
 }
 
-// ---------- 常量 ----------
+// ---------- 模板配置 ----------
 
-const TABLE_WIDTH = 9000;       // 表格总宽 (twips)
-const IMG_SIZE = 1400;          // 图片尺寸 ≈ 2.5cm，统一大小
-const DATA_ROW_HEIGHT = 2400;   // 数据行高 ≈ 4.2cm，4行/页 + 表头
+// 每种报告类型的排版参数（完全匹配原始模板）
+const TEMPLATE_CONFIG = {
+  safety: {
+    pageMargins: { top: 800, bottom: 1100, left: 600, right: 480 },
+    tableWidth: 9971,
+    titleFont: '宋体',
+    titleSize: 44,
+    overviewSize: 30,
+    overviewFont: '宋体',
+    columns: [
+      { label: '序号', width: 606 },
+      { label: '部门', width: 834 },
+      { label: '问题描述', width: 1960 },
+      { label: '整改前图片', width: 2749 },
+      { label: '整改后图片', width: 2800 },
+      { label: '备注', width: 1022 },
+    ],
+    headerFontSize: 28,
+    dataFontSize: 28,
+    descFontSize: 22,
+    hasSignatures: false,
+  },
+  '5s': {
+    pageMargins: { top: 1213, bottom: 1440, left: 1123, right: 1123 },
+    tableWidth: 9207,
+    titleFont: 'Calibri',
+    titleSize: 36,
+    overviewSize: 24,
+    overviewFont: '宋体',
+    columns: [
+      { label: '序号', width: 578 },
+      { label: '存在问题', width: 1560 },
+      { label: '整改前图片', width: 2902 },
+      { label: '整改后图片', width: 3093 },
+      { label: '备注', width: 1074 },
+    ],
+    headerFontSize: 24,
+    dataFontSize: 28,
+    descFontSize: 21,
+    hasSignatures: true,
+  },
+  company: {
+    pageMargins: { top: 1213, bottom: 1440, left: 1123, right: 1123 },
+    tableWidth: 9207,
+    titleFont: 'Calibri',
+    titleSize: 36,
+    overviewSize: 24,
+    overviewFont: '宋体',
+    columns: [
+      { label: '序号', width: 578 },
+      { label: '存在问题', width: 1560 },
+      { label: '整改前图片', width: 2902 },
+      { label: '整改后图片', width: 3093 },
+      { label: '备注', width: 1074 },
+    ],
+    headerFontSize: 24,
+    dataFontSize: 28,
+    descFontSize: 21,
+    hasSignatures: true,
+  },
+};
+
+// 图片在单元格内的显示尺寸（EMU），模板中图片约 2 英寸宽
+const IMG_SIZE_EMU = 1828800; // ≈ 2 inches
 
 // ---------- 工具 ----------
 
@@ -50,72 +114,56 @@ function base64ToBytes(dataUrl) {
   return bytes;
 }
 
+/** 统一边框 — 匹配模板 sz=4 (0.5pt) */
 function cellBorder() {
   return {
-    top: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
-    bottom: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
-    left: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
-    right: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
+    top: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+    bottom: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+    left: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+    right: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
   };
-}
-
-function getColumns(reportType) {
-  if (reportType === 'safety') {
-    return [
-      { label: '序号', width: 5 },
-      { label: '部门', width: 8 },
-      { label: '问题描述', width: 30 },
-      { label: '整改前图片', width: 23 },
-      { label: '整改后图片', width: 23 },
-      { label: '备注', width: 11 },
-    ];
-  }
-  return [
-    { label: '序号', width: 5 },
-    { label: '存在问题', width: 38 },
-    { label: '整改前图片', width: 23 },
-    { label: '整改后图片', width: 23 },
-    { label: '备注', width: 11 },
-  ];
-}
-
-function cellWidthVal(pct) {
-  return Math.floor(TABLE_WIDTH * pct / 100);
 }
 
 // ---------- 单元格 ----------
 
-function textCell(text, pct, opts = {}) {
+function textCell(text, widthTwips, opts = {}) {
+  const cfg = opts.cfg || {};
+  const fontSize = opts.fontSize || cfg.dataFontSize || 28;
+  const font = opts.font || '宋体';
+
   return new TableCell({
-    width: { size: cellWidthVal(pct), type: WidthType.DXA },
+    width: { size: widthTwips, type: WidthType.DXA },
     borders: cellBorder(),
-    margins: { top: 40, bottom: 40, left: 60, right: 60 },
+    // 模板单元格边距：安全模板全0，5S/公司模板左右108
+    margins: opts.margins || { top: 0, bottom: 0, left: 0, right: 0 },
     children: [
       new Paragraph({
         children: [new TextRun({
           text: String(text || ''),
-          size: 18,
-          font: 'SimSun',
+          size: fontSize,
+          font: font,
+          bold: opts.bold || false,
         })],
         alignment: opts.align || AlignmentType.CENTER,
-        spacing: { before: 20, after: 20 },
+        spacing: { before: 0, after: 0, line: 240 },
       }),
     ],
-    verticalAlign: 'center',
+    verticalAlign: opts.verticalAlign || 'center',
   });
 }
 
-function imageCell(dataUrl, pct) {
+function imageCell(dataUrl, widthTwips, opts = {}) {
+  const cfg = opts.cfg || {};
   const children = [];
+
   if (dataUrl && dataUrl.startsWith('data:image')) {
     try {
-      // 同步创建 ImageRun —— 图片已在上层压缩过
       children.push(
         new Paragraph({
           children: [
             new ImageRun({
               data: base64ToBytes(dataUrl),
-              transformation: { width: IMG_SIZE, height: IMG_SIZE },
+              transformation: { width: IMG_SIZE_EMU, height: IMG_SIZE_EMU },
               type: 'jpg',
             }),
           ],
@@ -131,10 +179,11 @@ function imageCell(dataUrl, pct) {
       );
     }
   }
+
   return new TableCell({
-    width: { size: cellWidthVal(pct), type: WidthType.DXA },
+    width: { size: widthTwips, type: WidthType.DXA },
     borders: cellBorder(),
-    margins: { top: 40, bottom: 40, left: 60, right: 60 },
+    margins: opts.margins || { top: 0, bottom: 0, left: 0, right: 0 },
     children: children.length > 0 ? children : [new Paragraph({ children: [] })],
     verticalAlign: 'center',
   });
@@ -142,21 +191,30 @@ function imageCell(dataUrl, pct) {
 
 // ---------- 行 ----------
 
-function headerRow(reportType) {
-  const cols = getColumns(reportType);
+function headerRow(cfg) {
+  const margins = cfg === TEMPLATE_CONFIG.safety
+    ? { top: 0, bottom: 0, left: 0, right: 0 }
+    : { top: 0, bottom: 0, left: 108, right: 108 };
+
   return new TableRow({
-    height: { value: 500, rule: HeightRule.EXACT },
+    height: { value: 90, rule: HeightRule.AT_LEAST },
     tableHeader: true,
-    children: cols.map(col =>
+    children: cfg.columns.map(col =>
       new TableCell({
-        width: { size: cellWidthVal(col.width), type: WidthType.DXA },
+        width: { size: col.width, type: WidthType.DXA },
         borders: cellBorder(),
         shading: { type: ShadingType.SOLID, color: 'D9E2F3' },
-        margins: { top: 20, bottom: 20, left: 40, right: 40 },
+        margins: margins,
         children: [
           new Paragraph({
-            children: [new TextRun({ text: col.label, size: 18, font: 'SimSun', bold: true })],
+            children: [new TextRun({
+              text: col.label,
+              size: cfg.headerFontSize,
+              font: '宋体',
+              bold: true,
+            })],
             alignment: AlignmentType.CENTER,
+            spacing: { before: 0, after: 0, line: 240 },
           }),
         ],
         verticalAlign: 'center',
@@ -165,37 +223,56 @@ function headerRow(reportType) {
   });
 }
 
-async function dataRow(index, item, reportType) {
-  const cols = getColumns(reportType);
+async function dataRow(index, item, cfg) {
   const cells = [];
+  const margins = cfg === TEMPLATE_CONFIG.safety
+    ? { top: 0, bottom: 0, left: 0, right: 0 }
+    : { top: 0, bottom: 0, left: 108, right: 108 };
 
-  for (const col of cols) {
+  for (const col of cfg.columns) {
     if (col.label === '序号') {
-      cells.push(textCell(index, col.width));
+      cells.push(textCell(index, col.width, {
+        fontSize: cfg.dataFontSize,
+        font: '宋体',
+        margins,
+      }));
     } else if (col.label === '部门') {
-      cells.push(textCell(item.department || '压榨', col.width));
+      cells.push(textCell(item.department || '压榨', col.width, {
+        fontSize: cfg.dataFontSize,
+        font: '宋体',
+        margins,
+      }));
     } else if (col.label.includes('问题')) {
-      cells.push(textCell(item.description || '', col.width, { align: AlignmentType.LEFT }));
+      cells.push(textCell(item.description || '', col.width, {
+        fontSize: cfg.descFontSize,
+        font: '宋体',
+        align: AlignmentType.LEFT,
+        verticalAlign: 'center',
+        margins,
+      }));
     } else if (col.label.includes('整改前')) {
-      // 先压缩再放图
       let compressed = item.beforePhoto;
       if (compressed && compressed.startsWith('data:image')) {
         try { compressed = await compressImageForDocx(compressed); } catch(e) {}
       }
-      cells.push(imageCell(compressed, col.width));
+      cells.push(imageCell(compressed, col.width, { margins }));
     } else if (col.label.includes('整改后')) {
       let compressed = item.afterPhoto;
       if (compressed && compressed.startsWith('data:image')) {
         try { compressed = await compressImageForDocx(compressed); } catch(e) {}
       }
-      cells.push(imageCell(compressed, col.width));
+      cells.push(imageCell(compressed, col.width, { margins }));
     } else if (col.label === '备注') {
-      cells.push(textCell(item.afterPhoto ? '已整改' : '', col.width));
+      cells.push(textCell(item.afterPhoto ? '已整改' : '', col.width, {
+        fontSize: cfg.dataFontSize,
+        font: '宋体',
+        margins,
+      }));
     }
   }
 
   return new TableRow({
-    height: { value: DATA_ROW_HEIGHT, rule: HeightRule.EXACT },
+    height: { value: 3400, rule: HeightRule.AT_LEAST },
     children: cells,
   });
 }
@@ -215,12 +292,13 @@ function formatDate(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return `${y}年${m}月${d}日`;
 }
 
 // ---------- 主函数 ----------
 
 async function generateDocx(reportType, header, items) {
+  const cfg = TEMPLATE_CONFIG[reportType] || TEMPLATE_CONFIG.safety;
   const { company, department, date: sigDate, halfMonth } = header;
   const totalItems = items.length;
   const completedItems = items.filter(i => i.afterPhoto).length;
@@ -230,13 +308,14 @@ async function generateDocx(reportType, header, items) {
   const year = sigDateObj.getFullYear();
   const month = sigDateObj.getMonth() + 1;
 
+  // --- 标题和概述文字（完全匹配模板措辞） ---
   let titleText, overviewText;
 
   if (reportType === 'safety') {
     titleText = '安全自检自查整改报告';
     const check1 = pickWorkday(year, month, sigDateObj.getDate() - 10, sigDateObj.getDate() - 8);
     const check2 = pickWorkday(year, month, sigDateObj.getDate() - 3, sigDateObj.getDate() - 1);
-    overviewText = `根据公司安全管理要求，我车间（部门）分别于${formatDate(check1)}、${formatDate(check2)}开展安全自检自查工作，其中提出了（${totalItems}）个整改项，并已整改完成（${completedItems}）项，未能完成整改（${unfinishedItems}）项。现将整改情况反馈如下：`;
+    overviewText = `根据公司安全管理要求，我车间（部门）分别与${formatDate(check1)}、${formatDate(check2)}开展安全自检自查工作，其中提出了（${totalItems}）个整改项，并已整改完成（${completedItems}）项，未能完成整改（${unfinishedItems}）项。`;
   } else if (reportType === '5s') {
     const halfLabel = halfMonth === 'first' ? '上半月' : '下半月';
     const startD = halfMonth === 'first' ? 13 : 23;
@@ -250,62 +329,105 @@ async function generateDocx(reportType, header, items) {
     overviewText = `${formatDate(checkD)}公司现场检查小组对我车间进行现场检查，提出${totalItems}个整改项，已整改完成${completedItems}项，未完成${unfinishedItems}项，附整改前后对比照片。`;
   }
 
-  // 构建表格
-  const rows = [headerRow(reportType)];
+  // --- 构建表格 ---
+  const rows = [headerRow(cfg)];
   for (let i = 0; i < items.length; i++) {
-    rows.push(await dataRow(i + 1, { ...items[i], department }, reportType));
+    rows.push(await dataRow(i + 1, { ...items[i], department }, cfg));
   }
 
   const table = new Table({
     rows,
-    width: { size: TABLE_WIDTH, type: WidthType.DXA },
+    width: { size: cfg.tableWidth, type: WidthType.DXA },
   });
 
-  // 构建文档
+  // --- 构建文档 ---
+  const pm = cfg.pageMargins;
+  const sectionChildren = [
+    // 标题
+    new Paragraph({
+      children: [new TextRun({
+        text: titleText,
+        size: cfg.titleSize,
+        font: cfg.titleFont,
+        bold: true,
+      })],
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 242, after: 0, line: 400 },
+    }),
+    // 概述
+    new Paragraph({
+      children: [new TextRun({
+        text: overviewText,
+        size: cfg.overviewSize,
+        font: cfg.overviewFont,
+      })],
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { before: 242, after: 120, line: 400 },
+      indent: { firstLine: 560, left: 120 },
+    }),
+    // 表格
+    table,
+    // 表格后空行
+    new Paragraph({ children: [], spacing: { after: 100 } }),
+    // 落款：公司名称
+    new Paragraph({
+      children: [new TextRun({
+        text: company,
+        size: cfg === TEMPLATE_CONFIG.safety ? 30 : 28,
+        font: '宋体',
+      })],
+      alignment: AlignmentType.RIGHT,
+      spacing: { before: 0, after: 0 },
+    }),
+    // 落款：部门
+    new Paragraph({
+      children: [new TextRun({
+        text: `    ${department}`,
+        size: cfg === TEMPLATE_CONFIG.safety ? 30 : 28,
+        font: '宋体',
+      })],
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 0 },
+    }),
+    // 落款：日期
+    new Paragraph({
+      children: [new TextRun({
+        text: formatDate(sigDateObj),
+        size: cfg === TEMPLATE_CONFIG.safety ? 30 : 28,
+        font: '宋体',
+      })],
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { before: 0, after: 200 },
+    }),
+  ];
+
+  // 5S 和公司整改报告有 编制/审核/批准 行
+  if (cfg.hasSignatures) {
+    sectionChildren.push(
+      new Paragraph({
+        children: [new TextRun({
+          text: '编制：               审核：                 批准：',
+          size: 28,
+          font: '宋体',
+        })],
+        spacing: { before: 0, after: 0 },
+      })
+    );
+  }
+
   const doc = new Document({
     sections: [{
       properties: {
         page: {
           margin: {
-            top: convertInchesToTwip(0.6),
-            bottom: convertInchesToTwip(0.6),
-            left: convertInchesToTwip(0.6),
-            right: convertInchesToTwip(0.6),
+            top: pm.top,
+            bottom: pm.bottom,
+            left: pm.left,
+            right: pm.right,
           },
         },
       },
-      children: [
-        new Paragraph({
-          children: [new TextRun({ text: titleText, size: 32, font: 'SimHei', bold: true })],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 200 },
-        }),
-        new Paragraph({
-          children: [new TextRun({ text: overviewText, size: 22, font: 'SimSun' })],
-          spacing: { after: 150 },
-          indent: { firstLine: convertInchesToTwip(0.35) },
-        }),
-        table,
-        new Paragraph({ children: [], spacing: { after: 150 } }),
-        new Paragraph({
-          children: [new TextRun({ text: company, size: 22, font: 'SimSun' })],
-          alignment: AlignmentType.RIGHT,
-        }),
-        new Paragraph({
-          children: [new TextRun({ text: `    ${department}`, size: 22, font: 'SimSun' })],
-          alignment: AlignmentType.RIGHT,
-        }),
-        new Paragraph({
-          children: [new TextRun({ text: formatDate(sigDateObj), size: 22, font: 'SimSun' })],
-          alignment: AlignmentType.RIGHT,
-          spacing: { after: 200 },
-        }),
-        ...(reportType !== 'safety' ? [
-          new Paragraph({
-            children: [new TextRun({ text: '编制：               审核：                 批准：', size: 22, font: 'SimSun' })],
-          }),
-        ] : []),
-      ],
+      children: sectionChildren,
     }],
   });
 
