@@ -7,7 +7,7 @@ const DOUBAO_MODEL = 'ep-20260616232549-wr6bn';
 // 火山方舟图片编辑 API (images/generations)
 // 使用 Seedream 4.5 图生图，单独 API Key 授权
 const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
-const IMAGE_EDIT_MODEL = 'doubao-seedream-4-5-251128';
+const IMAGE_EDIT_MODEL = 'ep-20260619024752-vbxk7';
 const IMAGE_API_KEY = 'ark-a5912081-882c-4cbf-917b-e9cac733f0d8-894c4';
 
 function buildPrompt(text, reportType) {
@@ -167,7 +167,7 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
         body: JSON.stringify({
           model: IMAGE_EDIT_MODEL,
           prompt: prompt.trim(),
-          image: compressed,           // base64 data URL，同平台直传
+          image: [compressed],         // 必须是数组格式
           size: '1024x1024',
           response_format: 'b64_json', // 直接返回 base64，避免二次下载
           watermark: false,
@@ -187,7 +187,15 @@ async function callImageEdit(imageDataUrl, prompt, onProgress) {
       const errText = await response.text().catch(() => '');
       console.error('[修图] API 错误:', response.status, errText);
 
+      // 尝试解析错误详情
+      let errMsg = '';
+      try { const errJson = JSON.parse(errText); errMsg = errJson.error?.message || errJson.error?.code || ''; } catch {}
+      if (errMsg) console.error('[修图] 错误详情:', errMsg);
+
       // 给出具体错误提示
+      if (response.status === 400) {
+        throw new Error(errMsg || `请求格式错误，请重试`);
+      }
       if (response.status === 401 || response.status === 403) {
         throw new Error('API Key 无权访问图片模型，可能需要开通服务');
       }
