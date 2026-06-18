@@ -265,7 +265,7 @@ async function dataRow(index, item, cfg) {
       cells.push(imageCell(compressed, col.width, { margins }));
     } else if (col.label === '备注') {
       cells.push(textCell(item.afterPhoto ? '已整改' : '', col.width, {
-        fontSize: cfg.dataFontSize,
+        fontSize: 20,
         font: '宋体',
         margins,
       }));
@@ -391,7 +391,7 @@ async function generateDocx(reportType, header, items) {
         size: cfg === TEMPLATE_CONFIG.safety ? 30 : 28,
         font: '宋体',
       })],
-      alignment: AlignmentType.CENTER,
+      alignment: AlignmentType.RIGHT,
       spacing: { before: 0, after: 0 },
     }),
     // 落款：日期
@@ -401,7 +401,7 @@ async function generateDocx(reportType, header, items) {
         size: cfg === TEMPLATE_CONFIG.safety ? 30 : 28,
         font: '宋体',
       })],
-      alignment: AlignmentType.JUSTIFIED,
+      alignment: AlignmentType.RIGHT,
       spacing: { before: 0, after: 200 },
     }),
   ];

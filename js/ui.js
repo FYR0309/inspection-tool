@@ -180,17 +180,19 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
         <span class="title">${isEdit ? '编辑问题项' : '新增问题项'}</span>
       </div>
 
-      <h3 style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;margin-top:8px;">📷 现场照片（点击选择拍照或相册）</h3>
+      <h3 style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;margin-top:8px;">📷 现场照片（点击进相册 · 点📷拍照）</h3>
       <div class="photo-slots">
-        <div class="photo-slot ${beforePhoto ? 'has-photo' : ''}" id="slot-before">
+        <div class="photo-slot ${beforePhoto ? 'has-photo' : ''}" id="slot-before" style="position:relative;">
           ${beforePhoto
             ? `<img src="${beforePhoto}" alt="整改前"><div style="position:absolute;bottom:4px;font-size:10px;background:rgba(0,0,0,0.6);color:#fff;padding:2px 6px;border-radius:4px;">整改前 ✓</div>`
-            : '<span class="slot-icon">📷</span><span class="slot-label">问题照片</span>'}
+            : '<span class="slot-icon">🖼️</span><span class="slot-label">问题照片</span>'}
+          <button class="slot-camera-btn" data-slot="slot-before" style="position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.5);color:#fff;font-size:16px;line-height:32px;text-align:center;cursor:pointer;padding:0;z-index:5;">📷</button>
         </div>
-        <div class="photo-slot ${afterPhoto ? 'has-photo' : ''}" id="slot-after">
+        <div class="photo-slot ${afterPhoto ? 'has-photo' : ''}" id="slot-after" style="position:relative;">
           ${afterPhoto
             ? `<img src="${afterPhoto}" alt="整改后"><div style="position:absolute;bottom:4px;font-size:10px;background:rgba(0,0,0,0.6);color:#fff;padding:2px 6px;border-radius:4px;">整改后 ✓</div>`
-            : '<span class="slot-icon">📷</span><span class="slot-label">整改后照片<br><small>(选填，上传=已整改)</small></span>'}
+            : '<span class="slot-icon">🖼️</span><span class="slot-label">整改后照片<br><small>(选填，上传=已整改)</small></span>'}
+          <button class="slot-camera-btn" data-slot="slot-after" style="position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,0.5);color:#fff;font-size:16px;line-height:32px;text-align:center;cursor:pointer;padding:0;z-index:5;">📷</button>
         </div>
       </div>
 
@@ -217,62 +219,53 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
     </div>
   `;
 
-  function showPhotoPicker(callback) {
-    // 移除旧弹窗
-    const old = document.getElementById('photo-picker-overlay');
-    if (old) old.remove();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'photo-picker-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:60;display:flex;align-items:flex-end;justify-content:center;';
-    overlay.innerHTML = `
-      <div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:20px;animation:slideUp 0.2s ease-out;">
-        <h3 style="text-align:center;margin-bottom:16px;">选择图片来源</h3>
-        <button class="btn btn-primary btn-block" id="picker-camera" style="margin-bottom:10px;font-size:16px;">📷 拍照</button>
-        <button class="btn btn-outline btn-block" id="picker-gallery" style="margin-bottom:10px;font-size:16px;">🖼️ 从相册选择</button>
-        <button class="btn btn-block" id="picker-cancel" style="color:var(--text-secondary);">取消</button>
-      </div>`;
-    document.body.appendChild(overlay);
-
-    overlay.querySelector('#picker-camera').onclick = () => { overlay.remove(); callback('camera'); };
-    overlay.querySelector('#picker-gallery').onclick = () => { overlay.remove(); callback('gallery'); };
-    overlay.querySelector('#picker-cancel').onclick = () => overlay.remove();
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-  }
-
   function setupPhotoSlot(slotId) {
     const slot = document.getElementById(slotId);
-    slot.addEventListener('click', () => {
-      showPhotoPicker((source) => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        if (source === 'camera') input.capture = 'environment';
-        input.onchange = () => {
-          const file = input.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            if (slotId === 'slot-before') {
-              window._formBeforePhoto = e.target.result;
-            } else {
-              window._formAfterPhoto = e.target.result;
-            }
-            renderItemForm({
-              item: {
-                description: document.getElementById('item-desc')?.value || desc,
-                beforePhoto: slotId === 'slot-before' ? window._formBeforePhoto : (window._formBeforePhoto !== undefined ? window._formBeforePhoto : beforePhoto),
-                afterPhoto: slotId === 'slot-after' ? window._formAfterPhoto : (window._formAfterPhoto !== undefined ? window._formAfterPhoto : afterPhoto),
-              },
-              index,
-              onSave, onCancel, onOptimize,
-            });
-          };
-          reader.readAsDataURL(file);
+
+    function pickImage(source) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      if (source === 'camera') input.capture = 'environment';
+      input.onchange = () => {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (slotId === 'slot-before') {
+            window._formBeforePhoto = e.target.result;
+          } else {
+            window._formAfterPhoto = e.target.result;
+          }
+          renderItemForm({
+            item: {
+              description: document.getElementById('item-desc')?.value || desc,
+              beforePhoto: slotId === 'slot-before' ? window._formBeforePhoto : (window._formBeforePhoto !== undefined ? window._formBeforePhoto : beforePhoto),
+              afterPhoto: slotId === 'slot-after' ? window._formAfterPhoto : (window._formAfterPhoto !== undefined ? window._formAfterPhoto : afterPhoto),
+            },
+            index,
+            onSave, onCancel, onOptimize,
+          });
         };
-        input.click();
-      });
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    }
+
+    // 点击插槽主体 → 直接进相册
+    slot.addEventListener('click', (e) => {
+      if (e.target.closest('.slot-camera-btn')) return;
+      pickImage('gallery');
     });
+
+    // 📷 小按钮 → 拍照
+    const camBtn = slot.querySelector('.slot-camera-btn');
+    if (camBtn) {
+      camBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pickImage('camera');
+      });
+    }
   }
 
   window._formBeforePhoto = beforePhoto;
@@ -442,13 +435,11 @@ function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, 
           <div style="margin-top:10px;">
             <label style="font-size:13px;color:var(--text-secondary);">🔍 检查日期：</label>
             <input type="date" class="form-input" id="inspection-date" value="${h.inspectionDate || h.date || getTodayStr()}" style="width:auto;display:inline-block;">
-            <button class="btn btn-sm btn-outline" id="confirm-inspection-btn" style="margin-left:6px;">确认</button>
             <div style="font-size:10px;color:#999;margin-top:2px;">用于确定检查区间（报告概述中的日期）</div>
           </div>
           <div style="margin-top:8px;">
             <label style="font-size:13px;color:var(--text-secondary);">✍️ 落款日期：</label>
             <input type="date" class="form-input" id="sig-date" value="${h.date || getTodayStr()}" style="width:auto;display:inline-block;">
-            <button class="btn btn-sm btn-outline" id="confirm-date-btn" style="margin-left:6px;">确认</button>
           </div>
           ${halfMonthPreviewHtml}
         </div>
@@ -475,16 +466,16 @@ function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, 
   document.getElementById('download-btn').onclick = () => onConfirm('download');
   document.getElementById('share-btn').onclick = () => onConfirm('share');
 
-  document.getElementById('confirm-date-btn').onclick = () => {
-    const newDate = document.getElementById('sig-date').value;
+  document.getElementById('sig-date').addEventListener('change', (e) => {
+    const newDate = e.target.value;
     if (newDate) onEditDate(newDate);
-  };
+  });
 
   if (onEditInspectionDate) {
-    document.getElementById('confirm-inspection-btn').onclick = () => {
-      const newDate = document.getElementById('inspection-date').value;
+    document.getElementById('inspection-date').addEventListener('change', (e) => {
+      const newDate = e.target.value;
       if (newDate) onEditInspectionDate(newDate);
-    };
+    });
     // 如果没有单独设置检查日期，跟随落款日期变化
     if (!h.inspectionDate) {
       document.getElementById('sig-date').addEventListener('change', () => {
