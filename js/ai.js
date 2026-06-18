@@ -164,10 +164,10 @@ async function callImageEdit(imageDataUrl, prompt) {
     throw new Error('未获取到修图任务ID，请重试');
   }
 
-  // 3. 轮询任务结果（最长等 55 秒）
+  // 3. 轮询任务结果（最长等 90 秒）
   const TASK_URL = `${MODELSCOPE_API_BASE}/tasks/${taskId}`;
   const start = Date.now();
-  while (Date.now() - start < 55000) {
+  while (Date.now() - start < 90000) {
     await new Promise(r => setTimeout(r, 2000));
 
     const pollRes = await fetch(TASK_URL, {
