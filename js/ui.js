@@ -1,7 +1,7 @@
 // ui.js — 所有页面视图的渲染函数
 
-import { getPresets, savePresets, getTodayStr } from './db.js?v=20260630a';
-import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260630a';
+import { getPresets, savePresets, getTodayStr } from './db.js?v=20260701a';
+import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260701a';
 
 const pageContainer = document.getElementById('page-container');
 
@@ -27,6 +27,27 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+// ---------- 历史记录工具 ----------
+
+function getHistory(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return []; }
+}
+
+function addHistory(key, value, max = 3) {
+  if (!value) return;
+  const list = getHistory(key).filter(v => v !== value);
+  list.unshift(value);
+  localStorage.setItem(key, JSON.stringify(list.slice(0, max)));
+}
+
+function renderHistoryTags(key, onClick) {
+  const list = getHistory(key);
+  if (!list.length) return '';
+  return `<div class="history-tags">📝 ${list.map((h, i) =>
+    `<button class="history-tag" data-history="${escapeHtml(h)}">${escapeHtml(h.length > 18 ? h.slice(0, 18) + '…' : h)}</button>`
+  ).join(' ')}</div>`;
 }
 
 // ---------- 首页 ----------
@@ -168,11 +189,11 @@ function renderItemList({ reportType, items, headerInfo, onAdd, onEdit, onDelete
 
 // ---------- 新增/编辑条目页 ----------
 
-function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
+function renderItemForm({ item, index, onSave, onCancel, onOptimize, photoOverride }) {
   const isEdit = index !== undefined;
   const desc = item?.description || '';
-  const beforePhoto = item?.beforePhoto || '';
-  const afterPhoto = item?.afterPhoto || '';
+  const beforePhoto = (photoOverride && photoOverride.beforePhoto !== undefined) ? photoOverride.beforePhoto : (item?.beforePhoto || '');
+  const afterPhoto = (photoOverride && photoOverride.afterPhoto !== undefined) ? photoOverride.afterPhoto : (item?.afterPhoto || '');
 
   pageContainer.innerHTML = `
     <div class="page active" id="item-page">
@@ -203,6 +224,7 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
           <button class="btn btn-purple btn-sm" id="optimize-btn-inline" ${!desc.trim() ? 'disabled' : ''} style="${!desc.trim() ? 'opacity:0.5;' : ''}">✨ AI润色</button>
         </label>
         <textarea class="form-input" id="item-desc" placeholder="点击下方按钮语音输入或直接打字...">${escapeHtml(desc)}</textarea>
+        ${renderHistoryTags('optimize_history')}
       </div>
 
       <div style="display:flex;gap:10px;margin-bottom:14px;">
@@ -309,7 +331,7 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
     const voiceText = document.getElementById('voice-text');
     statusDiv.style.display = 'block';
     voiceText.textContent = '正在聆听...';
-    const { startVoiceRecognition } = await import('./camera-voice.js?v=20260630a');
+    const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701a');
     window._voiceRecognition = startVoiceRecognition({
       onResult: (text) => {
         voiceText.textContent = text;
@@ -331,9 +353,18 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize }) {
     });
   };
 
+  // 历史标签点击 → 填入输入框
+  document.getElementById('item-page').addEventListener('click', (e) => {
+    const tag = e.target.closest('.history-tag');
+    if (!tag) return;
+    document.getElementById('item-desc').value = tag.dataset.history;
+    document.getElementById('item-desc').dispatchEvent(new Event('input'));
+  });
+
   document.getElementById('optimize-btn-inline').onclick = () => {
     const currentDesc = document.getElementById('item-desc').value.trim();
     if (!currentDesc) { showToast('请先填写问题描述'); return; }
+    addHistory('optimize_history', currentDesc, 3);
     onOptimize(currentDesc);
   };
 
@@ -486,6 +517,9 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
           `).join('')}
         </div>
 
+        <!-- 历史指令 -->
+        ${renderHistoryTags('edit_prompt_history')}
+
         <!-- 操作按钮 -->
         <div style="display:flex;gap:10px;margin-top:12px;">
           <button class="btn btn-outline btn-block" id="edit-panel-cancel">取消</button>
@@ -529,9 +563,19 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
     if (!tag) return;
     promptInput.value = tag.dataset.prompt;
     submitBtn.disabled = false;
+    promptInput.dispatchEvent(new Event('input'));
     // 高亮选中
     overlay.querySelectorAll('.quick-prompt-tag').forEach(t => t.classList.remove('active'));
     tag.classList.add('active');
+  });
+
+  // 历史指令点击
+  overlay.querySelector('.edit-panel-body').addEventListener('click', (e) => {
+    const tag = e.target.closest('.history-tag');
+    if (!tag) return;
+    promptInput.value = tag.dataset.history;
+    submitBtn.disabled = false;
+    promptInput.dispatchEvent(new Event('input'));
   });
 
   // 输入框变化 → 启用提交按钮 + AI润色按钮
@@ -551,7 +595,7 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
     editVoiceStatus.style.display = 'block';
     editVoiceText.textContent = '正在聆听...';
     try {
-      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260630a');
+      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701a');
       startVoiceRecognition({
         onResult: (text) => {
           promptInput.value = text;
@@ -603,6 +647,9 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
   submitBtn.onclick = async () => {
     const prompt = promptInput.value.trim();
     if (!prompt) return;
+
+    // 保存修图指令历史
+    addHistory('edit_prompt_history', prompt, 3);
 
     // 切换到加载态
     previewArea.style.display = 'none';

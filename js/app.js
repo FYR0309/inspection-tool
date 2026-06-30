@@ -1,8 +1,8 @@
 // app.js — 应用主入口：全局状态、页面路由、事件协调
 
-import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr } from './db.js?v=20260630a';
-import { generateDocx } from './docx-gen.js?v=20260630a';
-import { callDoubaoOptimize } from './ai.js?v=20260630a';
+import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr } from './db.js?v=20260701a';
+import { generateDocx } from './docx-gen.js?v=20260701a';
+import { callDoubaoOptimize } from './ai.js?v=20260701a';
 import {
   showToast, FIXED_COMPANY, FIXED_DEPARTMENT,
   renderHomePage,
@@ -11,7 +11,7 @@ import {
   renderOptimizePage,
   showEditModal,
   renderGeneratePage,
-} from './ui.js?v=20260630a';
+} from './ui.js?v=20260701a';
 
 // ---------- 全局状态 ----------
 const state = {
@@ -103,12 +103,13 @@ function showItemList() {
 
 // ---------- 新增/编辑条目 ----------
 
-function showItemForm(editIndex) {
+function showItemForm(editIndex, photoOverride) {
   const item = editIndex !== undefined ? state.items[editIndex] : null;
 
   renderItemForm({
     item,
     index: editIndex,
+    photoOverride,
     onSave: (savedItem, idx) => {
       if (idx !== undefined) {
         state.items[idx] = savedItem;
@@ -124,19 +125,25 @@ function showItemForm(editIndex) {
       showItemList();
     },
     onCancel: () => showItemList(),
-    onOptimize: (text) => showOptimizePage(text),
+    onOptimize: (text) => showOptimizePage(text, editIndex),
   });
 }
 
 // ---------- AI 润色 ----------
 
-async function showOptimizePage(text) {
+async function showOptimizePage(text, editIndex) {
+  // 暂存当前表单照片，防止返回时丢失
+  const photoOverride = {
+    beforePhoto: window._formBeforePhoto,
+    afterPhoto: window._formAfterPhoto,
+  };
+
   renderOptimizePage({
     text,
     reportType: state.reportType,
     options: ['正在生成...', '正在生成...', '正在生成...'],
     onSelect: () => {}, onEdit: () => {}, onRetry: () => {},
-    onBack: () => showItemForm(state.items.length > 0 ? state.items.length - 1 : undefined),
+    onBack: () => showItemForm(editIndex, photoOverride),
   });
 
   const container = document.getElementById('options-container');
@@ -157,12 +164,12 @@ async function showOptimizePage(text) {
       options,
       onSelect: (selectedText) => {
         window._optimizedText = selectedText;
-        const lastIdx = state.items.length > 0 ? state.items.length - 1 : undefined;
-        showItemForm(lastIdx);
+        showItemForm(editIndex, photoOverride);
         setTimeout(() => {
           const descEl = document.getElementById('item-desc');
           if (descEl && window._optimizedText) {
             descEl.value = window._optimizedText;
+            descEl.dispatchEvent(new Event('input'));
             delete window._optimizedText;
           }
         }, 100);
@@ -170,8 +177,7 @@ async function showOptimizePage(text) {
       onEdit: (selectedText) => {
         showEditModal(selectedText, (editedText) => {
           window._optimizedText = editedText;
-          const lastIdx = state.items.length > 0 ? state.items.length - 1 : undefined;
-          showItemForm(lastIdx);
+          showItemForm(editIndex, photoOverride);
           setTimeout(() => {
             const descEl = document.getElementById('item-desc');
             if (descEl && window._optimizedText) {
@@ -181,12 +187,12 @@ async function showOptimizePage(text) {
           }, 100);
         });
       },
-      onRetry: () => showOptimizePage(text),
-      onBack: () => showItemForm(state.items.length > 0 ? state.items.length - 1 : undefined),
+      onRetry: () => showOptimizePage(text, editIndex),
+      onBack: () => showItemForm(editIndex, photoOverride),
     });
   } catch (e) {
     showToast('网络异常，请检查网络后重试');
-    showItemForm(state.items.length > 0 ? state.items.length - 1 : undefined);
+    showItemForm(editIndex, photoOverride);
   }
 }
 
