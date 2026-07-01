@@ -46,7 +46,7 @@ function saveDraftWithId() {
 
 // ---------- 导入处理 ----------
 
-async function handleImportDocx(file) {
+async function handleImportDocx(file, reportType) {
   showToast('正在解析文件...');
 
   let parsed;
@@ -63,7 +63,8 @@ async function handleImportDocx(file) {
   showMergePanel({
     parsed,
     drafts,
-    onConfirm: async (targetDraftId, reportType) => {
+    reportType,
+    onConfirm: async (targetDraftId) => {
       state.reportType = reportType;
 
       if (targetDraftId) {
@@ -97,7 +98,7 @@ async function handleImportDocx(file) {
   });
 }
 
-async function handleImportPhoto(file) {
+async function handleImportPhoto(file, reportType) {
   showToast('正在识别照片...');
 
   let result;
@@ -119,11 +120,11 @@ async function handleImportPhoto(file) {
   const drafts = await listDrafts();
 
   showMergePanel({
-    parsed: { items, reportType: null },
+    parsed: { items },
     drafts,
-    onConfirm: async (targetDraftId, reportType) => {
-      const rt = reportType || 'safety';
-      state.reportType = rt;
+    reportType,
+    onConfirm: async (targetDraftId) => {
+      state.reportType = reportType;
 
       if (targetDraftId) {
         const existing = await getDraft(targetDraftId);
@@ -132,7 +133,7 @@ async function handleImportPhoto(file) {
           state.headerInfo = existing.headerInfo || {
             company: FIXED_COMPANY, department: FIXED_DEPARTMENT,
             date: getTodayStr(), inspectionDate: getTodayStr(),
-            halfMonth: rt === '5s' ? 'first' : null,
+            halfMonth: reportType === '5s' ? 'first' : null,
           };
           state.currentDraftId = targetDraftId;
         }
@@ -141,7 +142,7 @@ async function handleImportPhoto(file) {
         state.headerInfo = {
           company: FIXED_COMPANY, department: FIXED_DEPARTMENT,
           date: getTodayStr(), inspectionDate: getTodayStr(),
-          halfMonth: rt === '5s' ? 'first' : null,
+          halfMonth: reportType === '5s' ? 'first' : null,
         };
         state.currentDraftId = null;
       }
@@ -173,15 +174,15 @@ function showHome() {
   });
 }
 
-function handleTypeSelection(type, resume, draftId, file) {
-  // 处理导入 .docx
+function handleTypeSelection(type, resume, draftId, file, importReportType) {
+  // 处理导入 .docx（用户已通过卡片 📥 按钮指定了报告类型）
   if (type === '__import_docx__' && file) {
-    handleImportDocx(file);
+    handleImportDocx(file, importReportType);
     return;
   }
-  // 处理导入照片
+  // 处理导入照片（用户已通过卡片 📥 按钮指定了报告类型）
   if (type === '__import_photo__' && file) {
-    handleImportPhoto(file);
+    handleImportPhoto(file, importReportType);
     return;
   }
 

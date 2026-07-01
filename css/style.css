@@ -636,3 +636,13 @@ textarea.form-input {
   transform: scale(0.95);
   background: #fef3c7;
 }
+
+/* 类型卡片导入按钮 */
+.type-import-btn:hover {
+  background: #f0f4ff !important;
+}
+
+.type-import-btn:active {
+  transform: scale(0.85);
+  background: #dbeafe !important;
+}

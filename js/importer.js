@@ -5,7 +5,7 @@
  * 解析 .docx 文件，提取问题条目
  * 只解析本工具生成的格式（表格结构已知）
  * @param {File} file — .docx 文件
- * @returns {Promise<{items: Array, reportType: string|null}>}
+ * @returns {Promise<{items: Array}>}
  */
 async function parseDocx(file) {
   // 1. 读取文件
@@ -92,18 +92,7 @@ async function parseDocx(file) {
     throw new Error('未从文档中提取到问题条目。仅支持本工具生成的报告格式');
   }
 
-  // 7. 尝试检测报告类型
-  let reportType = null;
-  const docText = docXml.replace(/<[^>]+>/g, ' ');
-  if (docText.includes('安全自检自查') || docText.includes('安全自查')) {
-    reportType = 'safety';
-  } else if (docText.includes('5S') || docText.includes('5s')) {
-    reportType = '5s';
-  } else if (docText.includes('现场整改')) {
-    reportType = 'company';
-  }
-
-  return { items, reportType };
+  return { items };
 }
 
 /**
