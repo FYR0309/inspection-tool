@@ -1,3 +1,8 @@
 node_modules/
 .env.local
 .git/
+.playwright-mcp/
+.superpowers/
+*.png
+*.yml
+page-snapshot.yml
