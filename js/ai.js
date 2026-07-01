@@ -41,13 +41,14 @@ function buildPrompt(text, reportType) {
  * @param {string} reportType - 'safety' | '5s' | 'company'
  * @returns {Promise<string[]>} 3个优化后的选项
  */
-async function callDoubaoOptimize(text, reportType) {
+async function callDoubaoOptimize(text, reportType, signal) {
   const response = await fetch(DOUBAO_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${DOUBAO_API_KEY}`
     },
+    signal,
     body: JSON.stringify({
       model: DOUBAO_MODEL,
       messages: [

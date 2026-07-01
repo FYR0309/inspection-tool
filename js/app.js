@@ -151,30 +151,35 @@ async function showOptimizePage(text, editIndex) {
     afterPhoto: window._formAfterPhoto,
   };
 
+  // 创建 AbortController，用于取消请求
+  const abortController = new AbortController();
+  let cancelled = false;
+
+  // 加载态
   renderOptimizePage({
     text,
     reportType: state.reportType,
-    options: ['正在生成...', '正在生成...', '正在生成...'],
+    options: [],
+    loading: true,
     onSelect: () => {}, onEdit: () => {}, onRetry: () => {},
-    onBack: () => showItemForm(editIndex, photoOverride),
+    onUseOriginal: () => {}, onBack: () => {},
+    onCancel: () => {
+      cancelled = true;
+      abortController.abort();
+      showItemForm(editIndex, photoOverride);
+    },
   });
 
-  const container = document.getElementById('options-container');
-  if (container) {
-    container.innerHTML = `
-      <div style="text-align:center;padding:40px;">
-        <span class="spinner" style="width:32px;height:32px;"></span>
-        <p style="margin-top:12px;color:var(--text-secondary);">AI 正在优化描述...</p>
-      </div>`;
-  }
-
   try {
-    const options = await callDoubaoOptimize(text, state.reportType);
+    const options = await callDoubaoOptimize(text, state.reportType, abortController.signal);
+
+    if (cancelled) return; // 已取消，不渲染结果
 
     renderOptimizePage({
       text,
       reportType: state.reportType,
       options,
+      loading: false,
       onSelect: (selectedText) => {
         window._optimizedText = selectedText;
         showItemForm(editIndex, photoOverride);
@@ -201,9 +206,31 @@ async function showOptimizePage(text, editIndex) {
         });
       },
       onRetry: () => showOptimizePage(text, editIndex),
+      onUseOriginal: (originalText) => {
+        // 直接用原文，等同选择了原文
+        window._optimizedText = originalText;
+        showItemForm(editIndex, photoOverride);
+        setTimeout(() => {
+          const descEl = document.getElementById('item-desc');
+          if (descEl && window._optimizedText) {
+            descEl.value = window._optimizedText;
+            descEl.dispatchEvent(new Event('input'));
+            delete window._optimizedText;
+          }
+        }, 100);
+      },
+      onCancel: () => {
+        cancelled = true;
+        abortController.abort();
+        showItemForm(editIndex, photoOverride);
+      },
       onBack: () => showItemForm(editIndex, photoOverride),
     });
   } catch (e) {
+    if (e.name === 'AbortError' || cancelled) {
+      // 用户主动取消，静默返回
+      return;
+    }
     showToast('网络异常，请检查网络后重试');
     showItemForm(editIndex, photoOverride);
   }

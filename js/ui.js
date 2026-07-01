@@ -410,7 +410,7 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize, photoOverri
 
 // ---------- AI 润色结果页 ----------
 
-function renderOptimizePage({ text, reportType, options, onSelect, onEdit, onRetry, onBack }) {
+function renderOptimizePage({ text, reportType, options, loading, onSelect, onEdit, onRetry, onBack, onUseOriginal, onCancel }) {
   pageContainer.innerHTML = `
     <div class="page active" id="optimize-page">
       <div class="nav-bar">
@@ -426,33 +426,57 @@ function renderOptimizePage({ text, reportType, options, onSelect, onEdit, onRet
       </div>
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">请选择一个优化结果：</p>
       <div id="options-container">
-        ${options.map((opt, i) => `
+        ${loading ? `
+          <div style="text-align:center;padding:40px;">
+            <span class="spinner" style="width:32px;height:32px;"></span>
+            <p style="margin-top:12px;color:var(--text-secondary);">AI 正在优化描述...</p>
+            <button class="btn btn-outline" id="cancel-optimize-btn" style="margin-top:12px;color:#e74c3c;border-color:#e74c3c;">✕ 取消</button>
+          </div>
+        ` : options.map((opt, i) => `
           <div class="option-card" data-index="${i}" id="option-${i}">
             <div style="font-weight:500;">${String.fromCharCode(65 + i)}. ${escapeHtml(opt)}</div>
           </div>
         `).join('')}
       </div>
-      <div style="display:flex;gap:10px;margin-top:14px;">
-        <button class="btn btn-warning btn-block" id="edit-selected-btn" disabled>✏️ 编辑修改</button>
-        <button class="btn btn-purple btn-block" id="retry-btn">🔄 换一批</button>
-      </div>
+      ${!loading ? `
+        <div style="display:flex;gap:10px;margin-top:14px;">
+          <button class="btn btn-warning btn-block" id="edit-selected-btn" disabled>✏️ 编辑修改</button>
+          <button class="btn btn-purple btn-block" id="retry-btn">🔄 换一批</button>
+        </div>
+        <button class="btn" id="use-original-btn" style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid #999;background:#fff;color:#666;font-size:14px;">📋 直接使用原文（不用 AI 结果）</button>
+      ` : ''}
     </div>
   `;
 
-  let selectedIndex = -1;
+  // 取消按钮
+  const cancelBtn = document.getElementById('cancel-optimize-btn');
+  if (cancelBtn && onCancel) {
+    cancelBtn.onclick = () => onCancel();
+  }
+
+  // 使用原文按钮
+  const useOriginalBtn = document.getElementById('use-original-btn');
+  if (useOriginalBtn && onUseOriginal) {
+    useOriginalBtn.onclick = () => onUseOriginal(text);
+  }
+
   document.getElementById('optimize-back').onclick = onBack;
-  document.getElementById('options-container').addEventListener('click', (e) => {
-    const card = e.target.closest('.option-card');
-    if (!card) return;
-    document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-    card.classList.add('selected');
-    selectedIndex = parseInt(card.dataset.index);
-    document.getElementById('edit-selected-btn').disabled = false;
-  });
-  document.getElementById('edit-selected-btn').onclick = () => {
-    if (selectedIndex >= 0) onEdit(options[selectedIndex]);
-  };
-  document.getElementById('retry-btn').onclick = () => onRetry();
+
+  if (!loading) {
+    let selectedIndex = -1;
+    document.getElementById('options-container').addEventListener('click', (e) => {
+      const card = e.target.closest('.option-card');
+      if (!card) return;
+      document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedIndex = parseInt(card.dataset.index);
+      document.getElementById('edit-selected-btn').disabled = false;
+    });
+    document.getElementById('edit-selected-btn').onclick = () => {
+      if (selectedIndex >= 0) onEdit(options[selectedIndex]);
+    };
+    document.getElementById('retry-btn').onclick = () => onRetry();
+  }
 }
 
 // ---------- 编辑弹窗 ----------
