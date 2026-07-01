@@ -64,17 +64,19 @@ function renderHomePage({ presets, drafts, onSelectType }) {
   let draftsHtml = '';
   if (drafts && drafts.length > 0) {
     const labels = { safety: '安全自查', '5s': '现场管理', company: '公司检查' };
+    const typeColors = { safety: '#4A90D9', '5s': '#F5A623', company: '#7ED321' };
+    const typeNames = { safety: '安全', '5s': '5S', company: '公司' };
     draftsHtml = `
       <div style="margin-top:16px;">
-        <h3 style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;">📝 未完成的草稿</h3>
+        <h3 style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;">📝 草稿箱 (${drafts.length}/6)</h3>
         ${drafts.map(d => `
-          <div class="card" data-action="resume" data-type="${d.type}" style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:24px;">📄</span>
-            <div style="flex:1;">
-              <div style="font-weight:600;">${labels[d.type] || d.type}</div>
+          <div class="card draft-card" style="display:flex;align-items:center;gap:10px;border-left:4px solid ${typeColors[d.type] || '#ccc'};">
+            <span style="background:${typeColors[d.type] || '#ccc'};color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;flex-shrink:0;">${typeNames[d.type] || d.type}</span>
+            <div style="flex:1;min-width:0;" data-action="resume" data-id="${d.id}" data-type="${d.type}">
+              <div style="font-weight:600;font-size:14px;">${labels[d.type] || d.type}</div>
               <div style="font-size:12px;color:#999;">${d.data?.items?.length || 0} 条记录 · ${new Date(d.updatedAt).toLocaleDateString('zh-CN')}</div>
             </div>
-            <span style="color:var(--primary);font-size:13px;">继续 ></span>
+            <button class="draft-delete-btn" data-action="delete-draft" data-id="${d.id}" style="background:none;border:none;font-size:18px;cursor:pointer;padding:6px 8px;color:#ccc;flex-shrink:0;" title="删除草稿">🗑️</button>
           </div>
         `).join('')}
       </div>
@@ -103,13 +105,30 @@ function renderHomePage({ presets, drafts, onSelectType }) {
   `;
 
   document.getElementById('home-page').addEventListener('click', (e) => {
+    // 删除草稿按钮
+    const delBtn = e.target.closest('[data-action="delete-draft"]');
+    if (delBtn) {
+      e.stopPropagation();
+      const draftId = delBtn.dataset.id;
+      if (confirm('确定删除这条草稿吗？')) {
+        import('./db.js?v=20260701a').then(({ deleteDraft, listDrafts }) => {
+          deleteDraft(draftId).then(() => {
+            listDrafts().then(newDrafts => {
+              renderHomePage({ drafts: newDrafts, onSelectType });
+            });
+          });
+        }).catch(() => location.reload());
+      }
+      return;
+    }
+
     const card = e.target.closest('[data-action]');
     if (!card) return;
     const action = card.dataset.action;
     if (action === 'select-type') {
       onSelectType(card.dataset.type);
     } else if (action === 'resume') {
-      onSelectType(card.dataset.type, true);
+      onSelectType(card.dataset.type, true, card.dataset.id);
     }
   });
 }
