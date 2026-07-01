@@ -1,6 +1,6 @@
 // app.js — 应用主入口：全局状态、页面路由、事件协调
 
-import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr } from './db.js?v=20260701a';
+import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr, migrateFromV1 } from './db.js?v=20260701a';
 import { generateDocx } from './docx-gen.js?v=20260701a';
 import { callDoubaoOptimize } from './ai.js?v=20260701a';
 import {
@@ -17,6 +17,7 @@ import {
 const state = {
   reportType: null,
   items: [],
+  currentDraftId: null,  // 当前编辑的草稿 ID
   headerInfo: {
     company: FIXED_COMPANY,
     department: FIXED_DEPARTMENT,
@@ -32,36 +33,44 @@ window._showToast = showToast;
 // ---------- 首页 ----------
 
 function showHome() {
-  listDrafts().then(drafts => {
-    renderHomePage({
-      drafts,
-      onSelectType: (type, resume) => {
-        state.reportType = type;
-
-        const defaults = {
-          company: FIXED_COMPANY,
-          department: FIXED_DEPARTMENT,
-          date: getTodayStr(),
-          inspectionDate: getTodayStr(),
-          halfMonth: type === '5s' ? 'first' : null,
-        };
-
-        if (resume) {
-          getDraft(type).then(draftData => {
-            if (draftData) {
-              state.items = draftData.items || [];
-              state.headerInfo = { ...defaults, ...draftData.headerInfo };
-            }
-            showItemList();
-          });
-        } else {
-          state.items = [];
-          state.headerInfo = defaults;
-          showItemList();
-        }
-      },
+  // v1 → v2 迁移（首次运行时执行）
+  migrateFromV1().then(() => {
+    listDrafts().then(drafts => {
+      renderHomePage({ drafts, onSelectType: handleTypeSelection });
+    });
+  }).catch(() => {
+    listDrafts().then(drafts => {
+      renderHomePage({ drafts, onSelectType: handleTypeSelection });
     });
   });
+}
+
+function handleTypeSelection(type, resume, draftId) {
+  state.reportType = type;
+
+  const defaults = {
+    company: FIXED_COMPANY,
+    department: FIXED_DEPARTMENT,
+    date: getTodayStr(),
+    inspectionDate: getTodayStr(),
+    halfMonth: type === '5s' ? 'first' : null,
+  };
+
+  if (resume && draftId) {
+    getDraft(draftId).then(draftData => {
+      if (draftData) {
+        state.items = draftData.items || [];
+        state.headerInfo = { ...defaults, ...draftData.headerInfo };
+        state.currentDraftId = draftId;
+      }
+      showItemList();
+    });
+  } else {
+    state.items = [];
+    state.headerInfo = defaults;
+    state.currentDraftId = null;
+    showItemList();
+  }
 }
 
 // ---------- 条目列表 ----------
@@ -72,6 +81,8 @@ function showItemList() {
       saveDraft(state.reportType, {
         items: state.items,
         headerInfo: state.headerInfo,
+      }).then(newId => {
+        state.currentDraftId = newId;
       }).catch(e => console.error('保存草稿失败:', e));
     }
   };
@@ -120,6 +131,8 @@ function showItemForm(editIndex, photoOverride) {
         saveDraft(state.reportType, {
           items: state.items,
           headerInfo: state.headerInfo,
+        }).then(newId => {
+          state.currentDraftId = newId;
         }).catch(e => console.error('保存草稿失败:', e));
       }
       showItemList();
