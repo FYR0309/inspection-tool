@@ -222,9 +222,19 @@ function showItemList() {
     onAdd: () => showItemForm(),
     onEdit: (index) => showItemForm(index),
     onDelete: (index) => {
+      const deletedItem = state.items[index];
       state.items.splice(index, 1);
       saveDraftWithId();
       showItemList();
+
+      showToast('条目已删除', 5000, {
+        label: '撤回',
+        onUndo: () => {
+          state.items.splice(index, 0, deletedItem);
+          saveDraftWithId();
+          showItemList();
+        },
+      });
     },
     onGenerate: () => {
       if (state.items.length === 0) {

@@ -407,11 +407,32 @@ textarea.form-input {
   opacity: 0;
   transition: opacity 0.3s, transform 0.3s;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
 }
 
 .toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(4px);
+  pointer-events: auto;
+}
+
+.toast-undo-btn {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.4);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.toast-undo-btn:active {
+  background: rgba(255,255,255,0.35);
 }
 
 /* 加载指示器 */

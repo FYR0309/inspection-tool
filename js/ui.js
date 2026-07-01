@@ -11,16 +11,45 @@ const FIXED_DEPARTMENT = '压榨车间';
 
 // ---------- 通用 ----------
 
-function showToast(msg, duration = 2000) {
+function showToast(msg, duration = 2000, undoOpts) {
+  // 清除之前的定时器
+  if (window._toastTimer) { clearTimeout(window._toastTimer); window._toastTimer = null; }
+  // 清除之前的撤回回调
+  if (window._toastUndoCleanup) { window._toastUndoCleanup(); window._toastUndoCleanup = null; }
+
   let toast = document.querySelector('.toast');
   if (!toast) {
     toast = document.createElement('div');
     toast.className = 'toast';
     document.body.appendChild(toast);
   }
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), duration);
+
+  if (undoOpts && undoOpts.onUndo) {
+    // 带撤回按钮的 toast
+    toast.innerHTML = `<span>${msg}</span><button class="toast-undo-btn">${undoOpts.label || '撤回'}</button>`;
+    const btn = toast.querySelector('.toast-undo-btn');
+    let undone = false;
+    btn.onclick = () => {
+      undone = true;
+      toast.classList.remove('show');
+      if (window._toastTimer) { clearTimeout(window._toastTimer); window._toastTimer = null; }
+      undoOpts.onUndo();
+    };
+    // 超时后执行清理回调（如真正删除）
+    window._toastUndoCleanup = () => {
+      if (!undone && undoOpts.onTimeout) undoOpts.onTimeout();
+    };
+    toast.classList.add('show');
+    window._toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+      if (window._toastUndoCleanup) { window._toastUndoCleanup(); window._toastUndoCleanup = null; }
+    }, duration);
+  } else {
+    // 普通 toast
+    toast.textContent = msg;
+    toast.classList.add('show');
+    window._toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+  }
 }
 
 function escapeHtml(str) {
@@ -113,20 +142,36 @@ function renderHomePage({ presets, drafts, onSelectType }) {
   `;
 
   document.getElementById('home-page').addEventListener('click', (e) => {
-    // 删除草稿按钮
+    // 删除草稿按钮（撤回模式：立即隐藏 + toast 撤回）
     const delBtn = e.target.closest('[data-action="delete-draft"]');
     if (delBtn) {
       e.stopPropagation();
       const draftId = delBtn.dataset.id;
-      if (confirm('确定删除这条草稿吗？')) {
-        import('./db.js?v=20260701c').then(({ deleteDraft, listDrafts }) => {
-          deleteDraft(draftId).then(() => {
+      const deletedDraft = drafts.find(d => d.id === draftId);
+      if (!deletedDraft) return;
+
+      // 立即从显示中移除
+      const remaining = drafts.filter(d => d.id !== draftId);
+      renderHomePage({ drafts: remaining, onSelectType });
+
+      // 显示撤回 toast
+      showToast('草稿已删除', 5000, {
+        label: '撤回',
+        onUndo: () => {
+          // 恢复：重新读取（草稿还在 IndexedDB 中）
+          import('./db.js?v=20260701c').then(({ listDrafts }) => {
             listDrafts().then(newDrafts => {
               renderHomePage({ drafts: newDrafts, onSelectType });
             });
           });
-        }).catch(() => location.reload());
-      }
+        },
+        onTimeout: () => {
+          // 超时后真正删除
+          import('./db.js?v=20260701c').then(({ deleteDraft }) => {
+            deleteDraft(draftId).catch(() => {});
+          });
+        },
+      });
       return;
     }
 
@@ -225,7 +270,7 @@ function renderItemList({ reportType, items, headerInfo, onAdd, onEdit, onDelete
     const delBtn = e.target.closest('[data-action="delete"]');
     if (delBtn) {
       e.stopPropagation();
-      if (confirm('确定删除这条记录吗？')) onDelete(parseInt(delBtn.dataset.index));
+      onDelete(parseInt(delBtn.dataset.index));
       return;
     }
     const row = e.target.closest('[data-action="edit"]');
