@@ -1,0 +1,16 @@
+- generic [ref=e56]:
+  - generic [ref=e57]:
+    - button "←" [ref=e58] [cursor=pointer]
+    - generic [ref=e59]: AI 润色结果
+  - generic [ref=e60]:
+    - generic [ref=e61]: 📝 原始描述：
+    - generic [ref=e62]: 电机皮带磨损严重需要更换
+    - generic [ref=e63]: 🛡️ 安全类 — 附加风险描述(≤15字)
+  - paragraph [ref=e64]: 请选择一个优化结果：
+  - generic [ref=e65]:
+    - generic [ref=e67] [cursor=pointer]: A. 经检查，电机皮带磨损程度严重，需予以更换，存在设备故障风险
+    - generic [ref=e69] [cursor=pointer]: B. 现场检查发现电机皮带磨损严重，应立即更换，易引发机械故障隐患
+    - generic [ref=e71] [cursor=pointer]: C. 电机皮带磨损严重，需及时更换，存在设备运行安全隐患
+  - generic [ref=e72]:
+    - button "✏️ 编辑修改" [ref=e73] [cursor=pointer]
+    - button "🔄 换一批" [ref=e74] [cursor=pointer]

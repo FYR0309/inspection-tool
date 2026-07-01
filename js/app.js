@@ -1,8 +1,8 @@
 // app.js — 应用主入口：全局状态、页面路由、事件协调
 
-import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr, migrateFromV1 } from './db.js?v=20260701a';
-import { generateDocx } from './docx-gen.js?v=20260701a';
-import { callDoubaoOptimize } from './ai.js?v=20260701a';
+import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr, migrateFromV1 } from './db.js?v=20260701c';
+import { generateDocx } from './docx-gen.js?v=20260701c';
+import { callDoubaoOptimize } from './ai.js?v=20260701c';
 import {
   showToast, FIXED_COMPANY, FIXED_DEPARTMENT,
   renderHomePage,
@@ -12,7 +12,7 @@ import {
   showEditModal,
   showMergePanel,
   renderGeneratePage,
-} from './ui.js?v=20260701a';
+} from './ui.js?v=20260701c';
 
 // ---------- 全局状态 ----------
 const state = {
@@ -38,7 +38,7 @@ async function handleImportDocx(file) {
 
   let parsed;
   try {
-    const { parseDocx } = await import('./importer.js?v=20260701a');
+    const { parseDocx } = await import('./importer.js?v=20260701c');
     parsed = await parseDocx(file);
   } catch (e) {
     showToast(e.message || '文件解析失败，请确认是工具生成的报告');
@@ -90,8 +90,70 @@ async function handleImportDocx(file) {
 }
 
 async function handleImportPhoto(file) {
-  // 照片 OCR 将在 Task 11 实现
-  showToast('照片导入功能即将上线');
+  showToast('正在识别照片...');
+
+  let result;
+  try {
+    const { parsePhoto } = await import('./importer.js?v=20260701c');
+    result = await parsePhoto(file);
+  } catch (e) {
+    showToast('照片处理失败，请重试');
+    return;
+  }
+
+  const items = [{
+    description: result.description,
+    beforePhoto: result.photo,
+    afterPhoto: '',
+    status: '待整改',
+  }];
+
+  const drafts = await listDrafts();
+
+  showMergePanel({
+    parsed: { items, reportType: null },
+    drafts,
+    onConfirm: async (targetDraftId, reportType) => {
+      const rt = reportType || 'safety';
+      state.reportType = rt;
+
+      if (targetDraftId) {
+        const existing = await getDraft(targetDraftId);
+        if (existing) {
+          state.items = [...(existing.items || []), ...items];
+          state.headerInfo = existing.headerInfo || {
+            company: FIXED_COMPANY, department: FIXED_DEPARTMENT,
+            date: getTodayStr(), inspectionDate: getTodayStr(),
+            halfMonth: rt === '5s' ? 'first' : null,
+          };
+          state.currentDraftId = targetDraftId;
+        }
+      } else {
+        state.items = items;
+        state.headerInfo = {
+          company: FIXED_COMPANY, department: FIXED_DEPARTMENT,
+          date: getTodayStr(), inspectionDate: getTodayStr(),
+          halfMonth: rt === '5s' ? 'first' : null,
+        };
+        state.currentDraftId = null;
+      }
+
+      if (state.items.length > 0) {
+        saveDraft(state.reportType, {
+          items: state.items,
+          headerInfo: state.headerInfo,
+        }).then(newId => { state.currentDraftId = newId; })
+          .catch(e => console.error('保存草稿失败:', e));
+      }
+
+      const descPreview = result.description.length > 20
+        ? result.description.substring(0, 20) + '...'
+        : result.description;
+      showToast(`已导入照片：${descPreview}`);
+      showItemList();
+    },
+    onCancel: () => {},
+  });
 }
 
 // ---------- 首页 ----------

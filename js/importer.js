@@ -143,4 +143,128 @@ async function extractCellImage(cell, zip, imageMap) {
   return '';
 }
 
-export { parseDocx };
+// ---------- 照片 OCR ----------
+
+/**
+ * 用豆包视觉模型从照片中提取问题描述
+ * @param {File|string} photo — File 对象或 base64 data URL
+ * @returns {Promise<{description: string, photo: string}>}
+ */
+async function parsePhoto(photo) {
+  // 1. 转为 data URL
+  let dataUrl;
+  if (photo instanceof File) {
+    dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(photo);
+    });
+  } else {
+    dataUrl = photo;
+  }
+
+  // 2. 压缩图片（OCR 不需要太高分辨率）
+  const compressed = await compressImageForOCR(dataUrl);
+
+  // 3. 调用豆包视觉模型
+  const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+  const API_KEY = 'ark-4b152d9d-0ad1-4e65-838f-a52f264ff4ea-12064';
+  const VISION_MODEL = 'ep-20260616232549-wr6bn'; // 豆包模型（支持视觉则直接用）
+
+  // 去掉 data:image/...;base64, 前缀
+  const base64Data = compressed.split(',')[1] || compressed;
+
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        model: VISION_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: { url: `data:image/jpeg;base64,${base64Data}` }
+              },
+              {
+                type: 'text',
+                text: '请识别这张安全检查照片中的问题，用简洁的整改报告书面语言描述。只输出一句话的问题描述，不要加序号、标签或解释。'
+              }
+            ]
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 300
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error('[OCR] API 错误:', response.status, errText.substring(0, 200));
+      // 400 通常意味着模型不支持视觉，降级处理
+      if (response.status === 400) {
+        console.warn('[OCR] 模型可能不支持视觉，降级为纯图片导入');
+        return {
+          description: '（请手动填写问题描述）',
+          photo: dataUrl,
+        };
+      }
+      throw new Error(`AI 识别失败(${response.status})`);
+    }
+
+    const result = await response.json();
+    const content = result.choices?.[0]?.message?.content || '';
+    const description = content.trim();
+
+    return {
+      description: description || '（AI 未能识别，请手动描述）',
+      photo: dataUrl,
+    };
+  } catch (e) {
+    // 网络错误等 → 降级
+    console.warn('[OCR] 请求异常，降级为纯图片导入:', e.message);
+    return {
+      description: '（请手动填写问题描述）',
+      photo: dataUrl,
+    };
+  }
+}
+
+/**
+ * 压缩图片用于 OCR（比修图压缩轻，保留更多细节）
+ */
+function compressImageForOCR(dataUrl, maxKB = 800) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const MAX_PX = 1500;
+      if (w > MAX_PX || h > MAX_PX) {
+        const ratio = Math.min(MAX_PX / w, MAX_PX / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      let quality = 0.9;
+      let result = canvas.toDataURL('image/jpeg', quality);
+      while (result.length > maxKB * 1024 && quality > 0.3) {
+        quality -= 0.1;
+        result = canvas.toDataURL('image/jpeg', quality);
+      }
+      resolve(result);
+    };
+    img.src = dataUrl;
+  });
+}
+
+export { parseDocx, parsePhoto };

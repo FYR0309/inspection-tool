@@ -1,0 +1,13 @@
+- generic [ref=e40]:
+  - generic [ref=e41]:
+    - button "←" [ref=e42] [cursor=pointer]
+    - generic [ref=e43]: AI 润色结果
+  - generic [ref=e44]:
+    - generic [ref=e45]: 📝 原始描述：
+    - generic [ref=e46]: 电机皮带磨损严重需要更换
+    - generic [ref=e47]: 🛡️ 安全类 — 附加风险描述(≤15字)
+  - paragraph [ref=e48]: 请选择一个优化结果：
+  - paragraph [ref=e52]: AI 正在优化描述...
+  - generic [ref=e53]:
+    - button "✏️ 编辑修改" [disabled] [ref=e54] [cursor=pointer]
+    - button "🔄 换一批" [ref=e55] [cursor=pointer]

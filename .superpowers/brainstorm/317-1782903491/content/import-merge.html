@@ -1,0 +1,92 @@
+<h2>导入合并策略 — 两个方案对比</h2>
+<p class="subtitle">避免碎片化草稿，让导入的信息自动归队</p>
+
+<div class="section">
+  <h3>场景模拟</h3>
+  <div style="background:#fff3cd;border-radius:10px;padding:12px;font-size:13px;margin-bottom:16px;">
+    🧑‍🔧 上午张三发来一个 .docx（3条问题）→ 导入 → 草稿A<br>
+    📸 下午自己拍了2张新问题照片 → 导入 → <strong>应该去哪？</strong><br>
+    📄 第二天李四又发来一个 .docx（1条问题）→ 导入 → <strong>应该去哪？</strong>
+  </div>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">方案A：导入时询问合并目标</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="font-weight:600;font-size:14px;margin-bottom:8px;">📥 导入预览</div>
+      <div style="background:#f0f7ff;border-radius:8px;padding:10px;margin-bottom:12px;">
+        <div style="font-size:12px;">识别到 <strong>2 条问题</strong> + <strong>3 张照片</strong></div>
+      </div>
+
+      <div style="font-size:12px;color:#999;margin-bottom:8px;">导入到：</div>
+
+      <div style="border:2px solid #4A90D9;border-radius:10px;padding:12px;margin-bottom:8px;background:#f0f7ff;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="background:#4A90D9;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;">✓</span>
+          <div>
+            <div style="font-weight:600;">合并到上次编辑的草稿</div>
+            <div style="font-size:11px;color:#999;"><span style="background:#4A90D9;color:#fff;font-size:10px;padding:1px 4px;border-radius:3px;">安全</span> 3条 · 6/30 编辑过</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="border:1px solid #ccc;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#ccc;">○</span>
+          <div>
+            <div style="font-weight:600;">合并到其他草稿...</div>
+            <div style="font-size:11px;color:#999;">选择已有草稿追加</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="border:1px solid #ccc;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#ccc;">○</span>
+          <div>
+            <div style="font-weight:600;">创建新草稿</div>
+            <div style="font-size:11px;color:#999;">不合并，单独保存</div>
+          </div>
+        </div>
+      </div>
+
+      <button style="width:100%;padding:12px;background:#4A90D9;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;">确认导入</button>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">方案B：记住"当前工作草稿"</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="background:#e8f5e9;border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;">
+        💡 你正在编辑<b>「安全自查 · 6/30」</b><br>
+        <span style="color:#999;">所有导入将自动合并到这里</span>
+        <button style="display:block;margin-top:6px;font-size:11px;color:var(--primary);background:none;border:none;">切换工作草稿 →</button>
+      </div>
+
+      <div style="border:1px solid #e0e0e0;border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px;">
+        <div style="color:#999;">📥 拖拽或点击导入...</div>
+      </div>
+
+      <div style="font-size:11px;color:#999;margin-top:12px;text-align:center;">
+        导入后直接追加<br>无需每次选择
+      </div>
+
+      <div style="margin-top:16px;padding:10px;background:#fff3cd;border-radius:8px;font-size:11px;">
+        ⚠️ 缺点：需要用户理解"当前草稿"概念<br>
+        如果忘了切换，可能导入到错误的地方
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px;">
+  <div style="font-weight:600;margin-bottom:8px;">💡 我的推荐：方案A</div>
+  <div style="font-size:13px;color:#555;line-height:1.8;">
+    <strong>每次导入时弹一个简洁的选择面板：</strong><br>
+    1. 默认选中「合并到最近编辑的草稿」—— 覆盖 90% 的场景<br>
+    2. 也可以选「合并到其他草稿」或「创建新草稿」<br>
+    3. 一键确认，不啰嗦<br><br>
+    理由：方案A 不需要用户记住"当前草稿"这个概念，每次导入时看一眼目标草稿就行，心里有数。方案B 虽然省一次点击，但容易"导入完才发现去了错的地方"。
+  </div>
+</div>

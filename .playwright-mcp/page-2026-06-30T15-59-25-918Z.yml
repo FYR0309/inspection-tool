@@ -1,0 +1,25 @@
+- generic [ref=f2e98]:
+  - generic [ref=f2e99]:
+    - button "←" [ref=f2e100] [cursor=pointer]
+    - generic [ref=f2e101]: 新增问题项
+  - heading "📷 现场照片（点击进相册 · 点📷拍照）" [level=3] [ref=f2e102]
+  - generic [ref=f2e103]:
+    - generic [ref=f2e104] [cursor=pointer]:
+      - generic [ref=f2e105]: 🖼️
+      - generic [ref=f2e106]: 问题照片
+      - button "📷" [ref=f2e107]
+    - generic [ref=f2e108] [cursor=pointer]:
+      - generic [ref=f2e109]: 🖼️
+      - generic [ref=f2e110]:
+        - text: 整改后照片
+        - text: (选填，上传=已整改)
+      - button "📷" [ref=f2e111]
+  - generic [ref=f2e112]:
+    - generic [ref=f2e113]:
+      - generic [ref=f2e114]: 问题描述
+      - button "问题描述" [disabled] [ref=f2e115] [cursor=pointer]: ✨ AI润色
+    - textbox "点击下方按钮语音输入或直接打字..." [ref=f2e116]: 经检查，压榨机1号传动链条松动，需进行整改，存在机械伤害隐患
+  - generic [ref=f2e117]:
+    - button "🎤 语音输入" [ref=f2e118] [cursor=pointer]
+    - button "✏️ 文字输入" [ref=f2e119] [cursor=pointer]
+  - button "💾 保存" [ref=f2e120] [cursor=pointer]

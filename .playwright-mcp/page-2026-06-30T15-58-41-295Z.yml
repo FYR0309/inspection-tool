@@ -1,0 +1,11 @@
+- generic [ref=f2e3]:
+  - generic [ref=f2e20]:
+    - generic [ref=f2e21]:
+      - button "←" [ref=f2e22] [cursor=pointer]
+      - generic [ref=f2e23]: 安全自查报告
+    - generic [ref=f2e25]: 📋 0 个问题项（📷 0 张照片）
+    - generic [ref=f2e27]:
+      - generic [ref=f2e28]: 📸
+      - paragraph [ref=f2e29]: 还没有添加问题项
+      - paragraph [ref=f2e30]: 点击下方按钮开始拍照记录
+  - button "+ 新增问题项" [ref=f2e32] [cursor=pointer]

@@ -1,7 +1,7 @@
 // ui.js — 所有页面视图的渲染函数
 
-import { getPresets, savePresets, getTodayStr } from './db.js?v=20260701a';
-import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260701a';
+import { getPresets, savePresets, getTodayStr } from './db.js?v=20260701c';
+import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260701c';
 
 const pageContainer = document.getElementById('page-container');
 
@@ -119,7 +119,7 @@ function renderHomePage({ presets, drafts, onSelectType }) {
       e.stopPropagation();
       const draftId = delBtn.dataset.id;
       if (confirm('确定删除这条草稿吗？')) {
-        import('./db.js?v=20260701a').then(({ deleteDraft, listDrafts }) => {
+        import('./db.js?v=20260701c').then(({ deleteDraft, listDrafts }) => {
           deleteDraft(draftId).then(() => {
             listDrafts().then(newDrafts => {
               renderHomePage({ drafts: newDrafts, onSelectType });
@@ -375,7 +375,7 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize, photoOverri
     const voiceText = document.getElementById('voice-text');
     statusDiv.style.display = 'block';
     voiceText.textContent = '正在聆听...';
-    const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701a');
+    const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701c');
     window._voiceRecognition = startVoiceRecognition({
       onResult: (text) => {
         voiceText.textContent = text;
@@ -663,7 +663,7 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
     editVoiceStatus.style.display = 'block';
     editVoiceText.textContent = '正在聆听...';
     try {
-      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701a');
+      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701c');
       startVoiceRecognition({
         onResult: (text) => {
           promptInput.value = text;

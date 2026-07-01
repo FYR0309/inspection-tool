@@ -1,0 +1,91 @@
+<h2>改进二：导入 .docx / 照片</h2>
+<p class="subtitle">首页增加导入入口，支持 Word 文件和照片两种来源</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">首页 — 改版后完整布局</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="font-weight:600;font-size:16px;margin-bottom:4px;">安全检查报告</div>
+      <div style="color:#999;font-size:11px;margin-bottom:12px;">选择检查类型开始，或导入已有文件</div>
+      <div style="background:#f5f5f5;padding:8px;border-radius:8px;font-size:12px;color:#666;margin-bottom:10px;">🏢 广西糖业集团... · 👤 压榨车间 · 📅 2026-07-01</div>
+
+      <!-- 新增：导入按钮 -->
+      <div style="border:2px dashed #4A90D9;border-radius:10px;padding:12px;margin-bottom:10px;text-align:center;background:#f0f7ff;cursor:pointer;">
+        <div style="font-size:24px;margin-bottom:4px;">📥</div>
+        <div style="font-weight:600;color:#4A90D9;">导入报告文件</div>
+        <div style="font-size:11px;color:#999;">支持 Word 报告 (.docx) 或照片</div>
+      </div>
+
+      <div style="font-size:11px;color:#999;margin-bottom:6px;text-align:center;">—— 或新建报告 ——</div>
+
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #4A90D9;">🛡️ 安全自查报告<br><span style="font-size:11px;color:#999;">车间安全自检自查整改</span></div>
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #F5A623;">📋 现场管理自查报告<br><span style="font-size:11px;color:#999;">5S 现场检查通报</span></div>
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #7ED321;">🏭 公司现场检查整改报告<br><span style="font-size:11px;color:#999;">公司检查组检查后整改</span></div>
+
+      <div style="margin-top:12px;">
+        <div style="font-size:12px;color:#999;margin-bottom:6px;display:flex;justify-content:space-between;"><span>📝 草稿箱 (3/6)</span></div>
+        <div style="border:1px solid #e0e0e0;border-radius:10px;padding:10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;border-left:4px solid #4A90D9;">
+          <div><span style="background:#4A90D9;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;">安全</span> 📄 3条 · 6/30</div>
+          <button style="background:none;border:none;font-size:16px;cursor:pointer;color:#ccc;">🗑️</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">点击导入后的流程</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="font-weight:600;font-size:14px;margin-bottom:10px;">📥 导入报告</div>
+      <div style="font-size:12px;color:#999;margin-bottom:12px;">选择导入方式：</div>
+
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;">
+        <div style="font-weight:600;">📄 导入 Word 报告</div>
+        <div style="font-size:11px;color:#999;">选择 .docx 文件，自动提取表格中的描述和图片</div>
+      </div>
+
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:12px;">
+        <div style="font-weight:600;">📸 从照片提取</div>
+        <div style="font-size:11px;color:#999;">拍照或选照片，AI 自动识别图片内容和文字</div>
+      </div>
+
+      <div style="font-size:11px;color:var(--primary);background:#f0f7ff;padding:10px;border-radius:8px;margin-bottom:12px;">
+        💡 导入后自动创建新草稿<br>
+        可在草稿箱继续编辑
+      </div>
+
+      <div style="display:flex;justify-content:center;margin-top:8px;">
+        <button style="background:none;border:1px solid #ccc;padding:8px 20px;border-radius:8px;font-size:14px;">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>🔍 Word 导入解析原理</h3>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <div style="background:#f9f9f9;border-radius:10px;padding:16px;">
+    <div style="font-weight:600;margin-bottom:8px;">📄 .docx 文件导入</div>
+    <div style="font-size:13px;color:#555;line-height:1.8;">
+      1. 用户选择 .docx 文件<br>
+      2. JSZip 解压（.docx 本质是 ZIP）<br>
+      3. 读取 word/document.xml 中的表格<br>
+      4. 逐行提取：描述文字 + 内嵌图片<br>
+      5. 生成条目列表 → 跳转编辑页
+    </div>
+    <div style="font-size:11px;color:#999;margin-top:8px;">⚠️ 只解析咱们工具生成的格式<br>其他模板可能无法准确提取</div>
+  </div>
+
+  <div style="background:#f9f9f9;border-radius:10px;padding:16px;">
+    <div style="font-weight:600;margin-bottom:8px;">📸 照片 OCR 提取</div>
+    <div style="font-size:13px;color:#555;line-height:1.8;">
+      1. 用户拍照或从相册选图<br>
+      2. 图片压缩到 &lt;1MB<br>
+      3. 调用豆包视觉模型<br>
+      4. AI 识别图中问题区域+文字<br>
+      5. 输出描述 → 自动填入表单
+    </div>
+    <div style="font-size:11px;color:#999;margin-top:8px;">⚠️ 需要豆包视觉模型权限<br>OCR 结果仅供参考，可手动修改</div>
+  </div>
+</div>

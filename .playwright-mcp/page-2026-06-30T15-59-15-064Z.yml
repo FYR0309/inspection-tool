@@ -1,0 +1,23 @@
+- generic [ref=f2e1]:
+  - generic [ref=f2e72]:
+    - generic [ref=f2e73]:
+      - button "←" [ref=f2e74] [cursor=pointer]
+      - generic [ref=f2e75]: AI 润色结果
+    - generic [ref=f2e76]:
+      - generic [ref=f2e77]: 📝 原始描述：
+      - generic [ref=f2e78]: 压榨机1号传动链条松动，存在安全隐患需要整改
+      - generic [ref=f2e79]: 🛡️ 安全类 — 附加风险描述(≤15字)
+    - paragraph [ref=f2e80]: 请选择一个优化结果：
+    - generic [ref=f2e81]:
+      - generic [ref=f2e83] [cursor=pointer]: A. 经检查，压榨机1号传动链条松动，需进行整改，存在机械伤害隐患
+      - generic [ref=f2e85] [cursor=pointer]: B. 现场检查发现，压榨机1号传动链条松动，应落实整改，有设备故障风险
+      - generic [ref=f2e87] [cursor=pointer]: C. 安全检查显示，压榨机1号传动链条松动，需立即整改，存在人员卷入危险
+    - generic [ref=f2e88]:
+      - button "✏️ 编辑修改" [ref=f2e89] [cursor=pointer]
+      - button "🔄 换一批" [ref=f2e90] [cursor=pointer]
+  - generic [ref=f2e92]:
+    - heading "编辑描述" [level=3] [ref=f2e93]
+    - textbox [active] [ref=f2e94]: 经检查，压榨机1号传动链条松动，需进行整改，存在机械伤害隐患
+    - generic [ref=f2e95]:
+      - button "取消" [ref=f2e96] [cursor=pointer]
+      - button "确认" [ref=f2e97] [cursor=pointer]

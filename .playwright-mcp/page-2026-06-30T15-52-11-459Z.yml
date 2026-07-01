@@ -1,0 +1,16 @@
+- generic [ref=f2e4]:
+  - heading "安全检查报告" [level=2] [ref=f2e5]
+  - paragraph [ref=f2e6]: 选择检查类型开始
+  - generic [ref=f2e7]: 🏢 广西糖业集团红河制糖有限公司 · 👤 压榨车间 · 📅 2026-06-30
+  - generic [ref=f2e8] [cursor=pointer]:
+    - generic [ref=f2e9]: 🛡️
+    - generic [ref=f2e10]: 安全自查报告
+    - generic [ref=f2e11]: 车间安全自检自查整改
+  - generic [ref=f2e12] [cursor=pointer]:
+    - generic [ref=f2e13]: 📋
+    - generic [ref=f2e14]: 现场管理自查报告
+    - generic [ref=f2e15]: 5S 现场检查通报（含上/下半月）
+  - generic [ref=f2e16] [cursor=pointer]:
+    - generic [ref=f2e17]: 🏭
+    - generic [ref=f2e18]: 公司现场检查整改报告
+    - generic [ref=f2e19]: 公司检查组检查后整改

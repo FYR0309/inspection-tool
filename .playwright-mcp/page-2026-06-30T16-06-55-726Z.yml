@@ -1,0 +1,28 @@
+- generic [ref=e82]:
+  - generic [ref=e83]:
+    - button "←" [ref=e84] [cursor=pointer]
+    - generic [ref=e85]: 新增问题项
+  - heading "📷 现场照片（点击进相册 · 点📷拍照）" [level=3] [ref=e86]
+  - generic [ref=e87]:
+    - generic [ref=e88] [cursor=pointer]:
+      - generic [ref=e89]: 🖼️
+      - generic [ref=e90]: 问题照片
+      - button "📷" [ref=e91]
+    - generic [ref=e92] [cursor=pointer]:
+      - generic [ref=e93]: 🖼️
+      - generic [ref=e94]:
+        - text: 整改后照片
+        - text: (选填，上传=已整改)
+      - button "📷" [ref=e95]
+  - generic [ref=e96]:
+    - generic [ref=e97]:
+      - generic [ref=e98]: 问题描述
+      - button "问题描述" [disabled] [ref=e99] [cursor=pointer]: ✨ AI润色
+    - textbox "点击下方按钮语音输入或直接打字..." [ref=e100]: 经检查，电机皮带磨损程度严重，需予以更换，存在设备故障风险
+    - generic [ref=e101]:
+      - text: 📝
+      - button "电机皮带磨损严重需要更换" [ref=e102] [cursor=pointer]
+  - generic [ref=e103]:
+    - button "🎤 语音输入" [ref=e104] [cursor=pointer]
+    - button "✏️ 文字输入" [ref=e105] [cursor=pointer]
+  - button "💾 保存" [ref=e106] [cursor=pointer]

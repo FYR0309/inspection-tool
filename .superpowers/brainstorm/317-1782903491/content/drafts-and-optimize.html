@@ -1,0 +1,133 @@
+<h2>改进一：草稿系统 & 改进三：AI 优化控制</h2>
+<p class="subtitle">首页草稿卡片 + AI 优化页面的交互改进</p>
+
+<div class="section">
+  <h3>📝 首页 — 草稿区改造</h3>
+  <p style="font-size:13px;color:var(--text-secondary);">最多保留 6 条草稿，按时间排列。每条草稿可删除。</p>
+</div>
+
+<!-- 模拟手机屏幕 -->
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">现在的首页</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="font-weight:600;font-size:16px;margin-bottom:4px;">安全检查报告</div>
+      <div style="color:#999;font-size:11px;margin-bottom:12px;">选择检查类型开始</div>
+      <div style="background:#f5f5f5;padding:8px;border-radius:8px;font-size:12px;color:#666;margin-bottom:10px;">🏢 广西糖业集团... · 👤 压榨车间 · 📅 2026-07-01</div>
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #4A90D9;">🛡️ 安全自查报告<br><span style="font-size:11px;color:#999;">车间安全自检自查整改</span></div>
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #F5A623;">📋 现场管理自查报告<br><span style="font-size:11px;color:#999;">5S 现场检查通报</span></div>
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #7ED321;">🏭 公司现场检查整改报告<br><span style="font-size:11px;color:#999;">公司检查组检查后整改</span></div>
+      <div style="margin-top:12px;">
+        <div style="font-size:12px;color:#999;margin-bottom:6px;">📝 未完成的草稿</div>
+        <div style="border:1px solid #e0e0e0;border-radius:10px;padding:10px;">📄 安全自查 · 3条记录 · 6/28</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">改版后 — 草稿可删、最多6条</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="font-weight:600;font-size:16px;margin-bottom:4px;">安全检查报告</div>
+      <div style="color:#999;font-size:11px;margin-bottom:12px;">选择检查类型开始</div>
+      <div style="background:#f5f5f5;padding:8px;border-radius:8px;font-size:12px;color:#666;margin-bottom:10px;">🏢 广西糖业集团... · 👤 压榨车间 · 📅 2026-07-01</div>
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #4A90D9;">🛡️ 安全自查报告<br><span style="font-size:11px;color:#999;">车间安全自检自查整改</span></div>
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #F5A623;">📋 现场管理自查报告<br><span style="font-size:11px;color:#999;">5S 现场检查通报</span></div>
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #7ED321;">🏭 公司现场检查整改报告<br><span style="font-size:11px;color:#999;">公司检查组检查后整改</span></div>
+      <div style="margin-top:12px;">
+        <div style="font-size:12px;color:#999;margin-bottom:6px;display:flex;justify-content:space-between;"><span>📝 草稿箱 (3/6)</span><span style="color:var(--primary);">管理 →</span></div>
+        <div style="border:1px solid #e0e0e0;border-radius:10px;padding:10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;border-left:4px solid #4A90D9;">
+          <div><span style="background:#4A90D9;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;">安全</span> 📄 3条 · 6/30</div>
+          <button style="background:none;border:none;font-size:16px;cursor:pointer;color:#ccc;">🗑️</button>
+        </div>
+        <div style="border:1px solid #e0e0e0;border-radius:10px;padding:10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;border-left:4px solid #F5A623;">
+          <div><span style="background:#F5A623;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;">5S</span> 📄 5条 · 6/28</div>
+          <button style="background:none;border:none;font-size:16px;cursor:pointer;color:#ccc;">🗑️</button>
+        </div>
+        <div style="border:1px solid #e0e0e0;border-radius:10px;padding:10px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;border-left:4px solid #7ED321;">
+          <div><span style="background:#7ED321;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;">公司</span> 📄 2条 · 6/25</div>
+          <button style="background:none;border:none;font-size:16px;cursor:pointer;color:#ccc;">🗑️</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>🤖 AI 润色页 — 增加取消和跳过</h3>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">现在的 AI 润色页（等待中）</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="display:flex;align-items:center;margin-bottom:12px;"><button style="background:none;border:none;font-size:18px;">←</button><span style="font-weight:600;margin-left:8px;">AI 润色结果</span></div>
+      <div style="background:#fafafa;border-radius:10px;padding:12px;margin-bottom:14px;">
+        <div style="font-size:11px;color:#999;">📝 原始描述：</div>
+        <div style="font-size:14px;">压榨机1号有异响</div>
+      </div>
+      <div style="text-align:center;padding:40px;">
+        <div style="width:32px;height:32px;border:3px solid #e0e0e0;border-top-color:#4A90D9;border-radius:50%;display:inline-block;animation:spin 1s linear infinite;"></div>
+        <p style="margin-top:12px;color:#999;">AI 正在优化描述...</p>
+      </div>
+      <p style="font-size:11px;color:#999;text-align:center;">只能等待，无法取消</p>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">改版后 — 可取消 + 可跳过</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="display:flex;align-items:center;margin-bottom:12px;"><button style="background:none;border:none;font-size:18px;">←</button><span style="font-weight:600;margin-left:8px;">AI 润色结果</span></div>
+      <div style="background:#fafafa;border-radius:10px;padding:12px;margin-bottom:14px;">
+        <div style="font-size:11px;color:#999;">📝 原始描述：</div>
+        <div style="font-size:14px;">压榨机1号有异响</div>
+      </div>
+      <div style="text-align:center;padding:40px;">
+        <div style="width:32px;height:32px;border:3px solid #e0e0e0;border-top-color:#4A90D9;border-radius:50%;display:inline-block;animation:spin 1s linear infinite;"></div>
+        <p style="margin-top:12px;color:#999;">AI 正在优化描述...</p>
+        <button style="margin-top:12px;background:none;border:1px solid #e74c3c;color:#e74c3c;padding:8px 20px;border-radius:8px;font-size:14px;cursor:pointer;">✕ 取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">现在的 AI 润色页（结果）</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="display:flex;align-items:center;margin-bottom:12px;"><button style="background:none;border:none;font-size:18px;">←</button><span style="font-weight:600;margin-left:8px;">AI 润色结果</span></div>
+      <div style="background:#fafafa;border-radius:10px;padding:12px;margin-bottom:14px;">
+        <div style="font-size:11px;color:#999;">📝 原始描述：</div>
+        <div style="font-size:14px;">压榨机1号有异响</div>
+      </div>
+      <p style="font-size:12px;color:#999;margin-bottom:8px;">请选择一个优化结果：</p>
+      <div style="border:1px solid #4A90D9;border-radius:8px;padding:10px;margin-bottom:6px;background:#f0f7ff;">A. 压榨机1号运行时存在异常声响...</div>
+      <div style="border:1px solid #e0e0e0;border-radius:8px;padding:10px;margin-bottom:6px;">B. 1号压榨机在运转过程中发出异响...</div>
+      <div style="border:1px solid #e0e0e0;border-radius:8px;padding:10px;margin-bottom:6px;">C. 检查发现压榨机1号有异响情况...</div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button style="flex:1;padding:10px;border-radius:8px;border:1px solid #ccc;background:#fff;opacity:0.5;" disabled>✏️ 编辑修改</button>
+        <button style="flex:1;padding:10px;border-radius:8px;border:1px solid #7c3aed;background:#fff;color:#7c3aed;">🔄 换一批</button>
+      </div>
+      <p style="font-size:11px;color:#999;text-align:center;margin-top:8px;">必须选一个，不能直接用原文</p>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">改版后 — 增加"用原文"按钮</div>
+    <div class="mockup-body" style="font-size:13px;padding:12px;">
+      <div style="display:flex;align-items:center;margin-bottom:12px;"><button style="background:none;border:none;font-size:18px;">←</button><span style="font-weight:600;margin-left:8px;">AI 润色结果</span></div>
+      <div style="background:#fafafa;border-radius:10px;padding:12px;margin-bottom:14px;">
+        <div style="font-size:11px;color:#999;">📝 原始描述：</div>
+        <div style="font-size:14px;">压榨机1号有异响</div>
+      </div>
+      <p style="font-size:12px;color:#999;margin-bottom:8px;">请选择一个优化结果：</p>
+      <div style="border:1px solid #4A90D9;border-radius:8px;padding:10px;margin-bottom:6px;background:#f0f7ff;">A. 压榨机1号运行时存在异常声响...</div>
+      <div style="border:1px solid #e0e0e0;border-radius:8px;padding:10px;margin-bottom:6px;">B. 1号压榨机在运转过程中发出异响...</div>
+      <div style="border:1px solid #e0e0e0;border-radius:8px;padding:10px;margin-bottom:6px;">C. 检查发现压榨机1号有异响情况...</div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button style="flex:1;padding:10px;border-radius:8px;border:1px solid #ccc;background:#fff;opacity:0.5;" disabled>✏️ 编辑修改</button>
+        <button style="flex:1;padding:10px;border-radius:8px;border:1px solid #7c3aed;background:#fff;color:#7c3aed;">🔄 换一批</button>
+      </div>
+      <button style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid #999;background:#fff;color:#666;font-size:14px;">📋 直接使用原文（不用 AI 结果）</button>
+    </div>
+  </div>
+</div>
