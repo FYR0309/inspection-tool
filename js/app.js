@@ -1,8 +1,8 @@
 // app.js — 应用主入口：全局状态、页面路由、事件协调
 
-import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr, migrateFromV1 } from './db.js?v=20260701c';
-import { generateDocx } from './docx-gen.js?v=20260701c';
-import { callDoubaoOptimize } from './ai.js?v=20260701c';
+import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr, migrateFromV1 } from './db.js?v=20260701d';
+import { generateDocx } from './docx-gen.js?v=20260701d';
+import { callDoubaoOptimize } from './ai.js?v=20260701d';
 import {
   showToast, FIXED_COMPANY, FIXED_DEPARTMENT,
   renderHomePage,
@@ -12,7 +12,7 @@ import {
   showEditModal,
   showMergePanel,
   renderGeneratePage,
-} from './ui.js?v=20260701c';
+} from './ui.js?v=20260701d';
 
 // ---------- 全局状态 ----------
 const state = {
@@ -51,7 +51,7 @@ async function handleImportDocx(file, reportType) {
 
   let parsed;
   try {
-    const { parseDocx } = await import('./importer.js?v=20260701c');
+    const { parseDocx } = await import('./importer.js?v=20260701d');
     parsed = await parseDocx(file);
   } catch (e) {
     showToast(e.message || '文件解析失败，请确认是工具生成的报告');
@@ -103,7 +103,7 @@ async function handleImportPhoto(file, reportType) {
 
   let result;
   try {
-    const { parsePhoto } = await import('./importer.js?v=20260701c');
+    const { parsePhoto } = await import('./importer.js?v=20260701d');
     result = await parsePhoto(file);
   } catch (e) {
     showToast('照片处理失败，请重试');
