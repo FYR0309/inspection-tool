@@ -135,9 +135,31 @@ async function saveDraft(type, data, existingId) {
   }
 
   return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve(draft.id);
+    tx.oncomplete = () => {
+      // 每次保存后自动备份到 localStorage（防浏览器清空 IndexedDB）
+      try {
+        const backup = (all.length <= MAX_DRAFTS ? all : all.slice(-MAX_DRAFTS)).map(d => ({
+          id: d.id, type: d.type, updatedAt: d.updatedAt,
+          itemCount: d.data?.items?.length || 0,
+        }));
+        localStorage.setItem('drafts_backup', JSON.stringify(backup));
+        localStorage.setItem('drafts_backup_time', String(Date.now()));
+      } catch (e) { /* localStorage 满则跳过 */ }
+      resolve(draft.id);
+    };
     tx.onerror = (e) => reject(e.target.error);
   });
+}
+
+// 读取备份（用于检测数据丢失）
+function getBackupInfo() {
+  try {
+    const raw = localStorage.getItem('drafts_backup');
+    if (!raw) return null;
+    const backup = JSON.parse(raw);
+    const time = localStorage.getItem('drafts_backup_time');
+    return { drafts: backup, time: time ? Number(time) : 0 };
+  } catch (e) { return null; }
 }
 
 async function getDraft(id) {
@@ -157,7 +179,18 @@ async function deleteDraft(id) {
   const store = tx.objectStore(STORE_NAME);
   store.delete(id);
   return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = async () => {
+      // 刷新备份
+      try {
+        const all = await listDrafts();
+        const backup = all.map(d => ({
+          id: d.id, type: d.type, updatedAt: d.updatedAt,
+          itemCount: d.data?.items?.length || 0,
+        }));
+        localStorage.setItem('drafts_backup', JSON.stringify(backup));
+      } catch (e) { /* ignore */ }
+      resolve();
+    };
     tx.onerror = (e) => reject(e.target.error);
   });
 }
@@ -201,4 +234,4 @@ function getTodayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr, MAX_DRAFTS, migrateFromV1 };
+export { saveDraft, getDraft, deleteDraft, listDrafts, getBackupInfo, getPresets, savePresets, getTodayStr, MAX_DRAFTS, migrateFromV1 };

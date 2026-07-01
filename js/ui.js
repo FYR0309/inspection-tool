@@ -1,7 +1,7 @@
 // ui.js — 所有页面视图的渲染函数
 
-import { getPresets, savePresets, getTodayStr } from './db.js?v=20260701e';
-import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260701e';
+import { getPresets, savePresets, getTodayStr } from './db.js?v=20260701f';
+import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260701f';
 
 const pageContainer = document.getElementById('page-container');
 
@@ -156,7 +156,7 @@ function renderHomePage({ presets, drafts, onSelectType }) {
         label: '撤回',
         onUndo: () => {
           // 恢复：重新读取（草稿还在 IndexedDB 中）
-          import('./db.js?v=20260701e').then(({ listDrafts }) => {
+          import('./db.js?v=20260701f').then(({ listDrafts }) => {
             listDrafts().then(newDrafts => {
               renderHomePage({ drafts: newDrafts, onSelectType });
             });
@@ -164,7 +164,7 @@ function renderHomePage({ presets, drafts, onSelectType }) {
         },
         onTimeout: () => {
           // 超时后真正删除
-          import('./db.js?v=20260701e').then(({ deleteDraft }) => {
+          import('./db.js?v=20260701f').then(({ deleteDraft }) => {
             deleteDraft(draftId).catch(() => {});
           });
         },
@@ -424,7 +424,7 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize, photoOverri
     const voiceText = document.getElementById('voice-text');
     statusDiv.style.display = 'block';
     voiceText.textContent = '正在聆听...';
-    const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701e');
+    const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701f');
     window._voiceRecognition = startVoiceRecognition({
       onResult: (text) => {
         voiceText.textContent = text;
@@ -712,7 +712,7 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
     editVoiceStatus.style.display = 'block';
     editVoiceText.textContent = '正在聆听...';
     try {
-      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701e');
+      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701f');
       startVoiceRecognition({
         onResult: (text) => {
           promptInput.value = text;

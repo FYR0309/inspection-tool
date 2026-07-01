@@ -1,8 +1,8 @@
 // app.js — 应用主入口：全局状态、页面路由、事件协调
 
-import { saveDraft, getDraft, deleteDraft, listDrafts, getPresets, savePresets, getTodayStr, migrateFromV1 } from './db.js?v=20260701e';
-import { generateDocx } from './docx-gen.js?v=20260701e';
-import { callDoubaoOptimize } from './ai.js?v=20260701e';
+import { saveDraft, getDraft, deleteDraft, listDrafts, getBackupInfo, getPresets, savePresets, getTodayStr, migrateFromV1 } from './db.js?v=20260701f';
+import { generateDocx } from './docx-gen.js?v=20260701f';
+import { callDoubaoOptimize } from './ai.js?v=20260701f';
 import {
   showToast, FIXED_COMPANY, FIXED_DEPARTMENT,
   renderHomePage,
@@ -12,7 +12,7 @@ import {
   showEditModal,
   showMergePanel,
   renderGeneratePage,
-} from './ui.js?v=20260701e';
+} from './ui.js?v=20260701f';
 
 // ---------- 全局状态 ----------
 const state = {
@@ -51,7 +51,7 @@ async function handleImportDocx(file, reportType) {
 
   let parsed;
   try {
-    const { parseDocx } = await import('./importer.js?v=20260701e');
+    const { parseDocx } = await import('./importer.js?v=20260701f');
     parsed = await parseDocx(file);
   } catch (e) {
     showToast(e.message || '文件解析失败，请确认是工具生成的报告');
@@ -103,7 +103,7 @@ async function handleImportPhoto(file, reportType) {
 
   let result;
   try {
-    const { parsePhoto } = await import('./importer.js?v=20260701e');
+    const { parsePhoto } = await import('./importer.js?v=20260701f');
     result = await parsePhoto(file);
   } catch (e) {
     showToast('照片处理失败，请重试');
@@ -166,12 +166,24 @@ function showHome() {
   migrateFromV1().then(() => {
     listDrafts().then(drafts => {
       renderHomePage({ drafts, onSelectType: handleTypeSelection });
+      // 检测数据丢失：数据库空了但备份显示之前有数据
+      checkDataLoss(drafts);
     });
   }).catch(() => {
     listDrafts().then(drafts => {
       renderHomePage({ drafts, onSelectType: handleTypeSelection });
+      checkDataLoss(drafts);
     });
   });
+}
+
+function checkDataLoss(drafts) {
+  if (drafts.length > 0) return; // 有草稿，正常
+  const backup = getBackupInfo();
+  if (!backup || backup.drafts.length === 0) return; // 从来没有过草稿，正常
+  // 数据库空了但之前有草稿 → 可能被浏览器清空了
+  const daysAgo = Math.floor((Date.now() - backup.time) / 86400000);
+  showToast(`⚠️ 草稿数据丢失（${daysAgo}天前有${backup.drafts.length}条备份）`, 6000);
 }
 
 function handleTypeSelection(type, resume, draftId, file, importReportType) {
