@@ -1,7 +1,7 @@
 // ui.js — 所有页面视图的渲染函数
 
-import { getPresets, savePresets, getTodayStr } from './db.js?v=20260701d';
-import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260701d';
+import { getPresets, savePresets, getTodayStr } from './db.js?v=20260701e';
+import { callImageEdit, callOptimizePrompt } from './ai.js?v=20260701e';
 
 const pageContainer = document.getElementById('page-container');
 
@@ -93,7 +93,7 @@ function renderHomePage({ presets, drafts, onSelectType }) {
   let draftsHtml = '';
   if (drafts && drafts.length > 0) {
     const labels = { safety: '安全自查', '5s': '现场管理', company: '公司检查' };
-    const typeColors = { safety: '#4A90D9', '5s': '#F5A623', company: '#7ED321' };
+    const typeColors = { safety: '#c0833c', '5s': '#d4952b', company: '#7b6db5' };
     const typeNames = { safety: '安全', '5s': '5S', company: '公司' };
     draftsHtml = `
       <div style="margin-top:16px;">
@@ -156,7 +156,7 @@ function renderHomePage({ presets, drafts, onSelectType }) {
         label: '撤回',
         onUndo: () => {
           // 恢复：重新读取（草稿还在 IndexedDB 中）
-          import('./db.js?v=20260701d').then(({ listDrafts }) => {
+          import('./db.js?v=20260701e').then(({ listDrafts }) => {
             listDrafts().then(newDrafts => {
               renderHomePage({ drafts: newDrafts, onSelectType });
             });
@@ -164,7 +164,7 @@ function renderHomePage({ presets, drafts, onSelectType }) {
         },
         onTimeout: () => {
           // 超时后真正删除
-          import('./db.js?v=20260701d').then(({ deleteDraft }) => {
+          import('./db.js?v=20260701e').then(({ deleteDraft }) => {
             deleteDraft(draftId).catch(() => {});
           });
         },
@@ -325,7 +325,7 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize, photoOverri
         <button class="btn btn-outline btn-block" id="text-focus-btn">✏️ 文字输入</button>
       </div>
 
-      <div id="voice-status" style="display:none;text-align:center;padding:12px;background:#fef3c7;border-radius:10px;margin-bottom:10px;">
+      <div id="voice-status" style="display:none;text-align:center;padding:12px;background:#fdf3e0;border-radius:10px;margin-bottom:10px;">
         <span class="spinner" style="margin-right:8px;vertical-align:middle;"></span>
         <span id="voice-text" style="font-size:14px;">正在聆听...</span>
       </div>
@@ -424,7 +424,7 @@ function renderItemForm({ item, index, onSave, onCancel, onOptimize, photoOverri
     const voiceText = document.getElementById('voice-text');
     statusDiv.style.display = 'block';
     voiceText.textContent = '正在聆听...';
-    const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701d');
+    const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701e');
     window._voiceRecognition = startVoiceRecognition({
       onResult: (text) => {
         voiceText.textContent = text;
@@ -491,7 +491,7 @@ function renderOptimizePage({ text, reportType, options, loading, onSelect, onEd
         <button class="back-btn" id="optimize-back">←</button>
         <span class="title">AI 润色结果</span>
       </div>
-      <div style="background:#fafafa;border-radius:10px;padding:12px;margin-bottom:14px;margin-top:10px;">
+      <div style="background:#fafaf7;border-radius:10px;padding:12px;margin-bottom:14px;margin-top:10px;">
         <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">📝 原始描述：</div>
         <div style="font-size:14px;">${escapeHtml(text)}</div>
         <div style="font-size:11px;color:var(--primary);margin-top:6px;">
@@ -504,7 +504,7 @@ function renderOptimizePage({ text, reportType, options, loading, onSelect, onEd
           <div style="text-align:center;padding:40px;">
             <span class="spinner" style="width:32px;height:32px;"></span>
             <p style="margin-top:12px;color:var(--text-secondary);">AI 正在优化描述...</p>
-            <button class="btn btn-outline" id="cancel-optimize-btn" style="margin-top:12px;color:#e74c3c;border-color:#e74c3c;">✕ 取消</button>
+            <button class="btn btn-outline" id="cancel-optimize-btn" style="margin-top:12px;color:#c4553d;border-color:#c4553d;">✕ 取消</button>
           </div>
         ` : options.map((opt, i) => `
           <div class="option-card" data-index="${i}" id="option-${i}">
@@ -621,7 +621,7 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
           <textarea class="form-input edit-prompt-input" id="edit-prompt-input"
             placeholder="描述你想怎么修改这张图，如：调亮背景、去掉右下角水印、把日期抹掉…"
             rows="2"></textarea>
-          <div id="edit-voice-status" style="display:none;text-align:center;padding:8px;background:#fef3c7;border-radius:8px;margin-top:6px;font-size:13px;">
+          <div id="edit-voice-status" style="display:none;text-align:center;padding:8px;background:#fdf3e0;border-radius:8px;margin-top:6px;font-size:13px;">
             <span class="spinner" style="width:14px;height:14px;margin-right:6px;vertical-align:middle;"></span>
             <span id="edit-voice-text">正在聆听...</span>
           </div>
@@ -712,7 +712,7 @@ function showImageEditPanel(slotId, imageDataUrl, onConfirm) {
     editVoiceStatus.style.display = 'block';
     editVoiceText.textContent = '正在聆听...';
     try {
-      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701d');
+      const { startVoiceRecognition } = await import('./camera-voice.js?v=20260701e');
       startVoiceRecognition({
         onResult: (text) => {
           promptInput.value = text;
@@ -843,7 +843,7 @@ function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, 
     const halfLabel = h.halfMonth === 'first' ? '上半月' : '下半月';
     const d = (h.inspectionDate || h.date) ? new Date(h.inspectionDate || h.date) : new Date();
     halfMonthPreviewHtml = `
-      <div style="margin-top:10px;background:#f0f4ff;border-radius:8px;padding:10px;">
+      <div style="margin-top:10px;background:#fdf7f0;border-radius:8px;padding:10px;">
         <div style="font-size:11px;color:var(--primary);margin-bottom:4px;">📝 标题预览：</div>
         <div style="font-size:13px;font-weight:600;">${d.getFullYear()}年${d.getMonth()+1}月${FIXED_DEPARTMENT}5S现场检查通报（${halfLabel}）</div>
         <div style="margin-top:8px;">
@@ -939,7 +939,7 @@ function showMergePanel({ parsed, drafts, reportType, onConfirm, onCancel }) {
   const recentSameType = sameTypeDrafts.length > 0 ? sameTypeDrafts[0] : null;
   const typeLabels = { safety: '🛡️ 安全自查', '5s': '📋 现场管理', company: '🏭 公司检查' };
   const typeNames = { safety: '安全', '5s': '5S', company: '公司' };
-  const typeColors = { safety: '#4A90D9', '5s': '#F5A623', company: '#7ED321' };
+  const typeColors = { safety: '#c0833c', '5s': '#d4952b', company: '#7b6db5' };
 
   // 默认选中：同类型最近 > 全局最近 > 新建
   const defaultTarget = recentSameType ? recentSameType.id : (drafts.length > 0 ? drafts[0].id : 'new');
@@ -947,7 +947,7 @@ function showMergePanel({ parsed, drafts, reportType, onConfirm, onCancel }) {
   // 生成草稿选项 HTML
   function draftHtml(d, isSameType) {
     return `
-      <div class="merge-option" data-target="${d.id}" style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;">
+      <div class="merge-option" data-target="${d.id}" style="border:1px solid #e0dbd2;border-radius:10px;padding:12px;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="border:1px solid #ccc;color:#ccc;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">○</span>
           <span style="background:${typeColors[d.type] || '#ccc'};color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;flex-shrink:0;">${typeNames[d.type] || d.type}</span>
@@ -982,7 +982,7 @@ function showMergePanel({ parsed, drafts, reportType, onConfirm, onCancel }) {
         <div style="text-align:center;padding:16px;color:#999;font-size:13px;">暂无草稿</div>
       ` : ''}
 
-      <div class="merge-option" data-target="new" style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:14px;margin-top:6px;">
+      <div class="merge-option" data-target="new" style="border:1px solid #e0dbd2;border-radius:10px;padding:12px;margin-bottom:14px;margin-top:6px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="border:1px solid #ccc;color:#ccc;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">○</span>
           <div>
@@ -1005,8 +1005,8 @@ function showMergePanel({ parsed, drafts, reportType, onConfirm, onCancel }) {
     overlay.querySelectorAll('.merge-option').forEach(o => {
       const isSelected = o.dataset.target === selectedTarget;
       o.classList.toggle('selected', isSelected);
-      o.style.border = isSelected ? '2px solid var(--primary)' : '1px solid #e0e0e0';
-      o.style.background = isSelected ? '#f0f7ff' : '#fff';
+      o.style.border = isSelected ? '2px solid var(--primary)' : '1px solid #e0dbd2';
+      o.style.background = isSelected ? '#fdf7f0' : '#fff';
       const check = o.querySelector('span');
       if (check) {
         check.style.background = isSelected ? 'var(--primary)' : 'transparent';
