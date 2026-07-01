@@ -105,13 +105,13 @@ function readV1Data() {
   });
 }
 
-async function saveDraft(type, data) {
+async function saveDraft(type, data, existingId) {
   const db = await openDB();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   const store = tx.objectStore(STORE_NAME);
 
   const draft = {
-    id: generateId(),
+    id: existingId || generateId(),
     type,
     data,
     updatedAt: Date.now(),

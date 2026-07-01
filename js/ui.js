@@ -221,13 +221,15 @@ function renderItemList({ reportType, items, headerInfo, onAdd, onEdit, onDelete
   }
 
   document.getElementById('items-container').addEventListener('click', (e) => {
-    const row = e.target.closest('[data-action="edit"]');
-    if (row) { onEdit(parseInt(row.dataset.index)); return; }
+    // 先检查删除（delete 按钮在 edit 行内部，必须先判断）
     const delBtn = e.target.closest('[data-action="delete"]');
     if (delBtn) {
       e.stopPropagation();
       if (confirm('确定删除这条记录吗？')) onDelete(parseInt(delBtn.dataset.index));
+      return;
     }
+    const row = e.target.closest('[data-action="edit"]');
+    if (row) { onEdit(parseInt(row.dataset.index)); }
   });
 }
 

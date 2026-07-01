@@ -31,6 +31,19 @@ const state = {
 
 window._showToast = showToast;
 
+// ---------- 辅助：保存草稿（自动传入 currentDraftId 避免重复）----------
+
+function saveDraftWithId() {
+  if (!state.reportType || state.items.length === 0) return Promise.resolve();
+  return saveDraft(state.reportType, {
+    items: state.items,
+    headerInfo: state.headerInfo,
+  }, state.currentDraftId).then(newId => {
+    state.currentDraftId = newId;
+    return newId;
+  }).catch(e => { console.error('保存草稿失败:', e); });
+}
+
 // ---------- 导入处理 ----------
 
 async function handleImportDocx(file) {
@@ -74,13 +87,8 @@ async function handleImportDocx(file) {
         state.currentDraftId = null;
       }
 
-      if (state.items.length > 0) {
-        saveDraft(state.reportType, {
-          items: state.items,
-          headerInfo: state.headerInfo,
-        }).then(newId => { state.currentDraftId = newId; })
-          .catch(e => console.error('保存草稿失败:', e));
-      }
+      // 保存草稿（首次保存 currentDraftId 为 null 会新建；合并时传入已有 ID 会更新）
+      await saveDraftWithId();
 
       showToast(`已导入 ${parsed.items.length} 条`);
       showItemList();
@@ -138,13 +146,7 @@ async function handleImportPhoto(file) {
         state.currentDraftId = null;
       }
 
-      if (state.items.length > 0) {
-        saveDraft(state.reportType, {
-          items: state.items,
-          headerInfo: state.headerInfo,
-        }).then(newId => { state.currentDraftId = newId; })
-          .catch(e => console.error('保存草稿失败:', e));
-      }
+      await saveDraftWithId();
 
       const descPreview = result.description.length > 20
         ? result.description.substring(0, 20) + '...'
@@ -177,7 +179,7 @@ function handleTypeSelection(type, resume, draftId, file) {
     handleImportDocx(file);
     return;
   }
-  // 处理导入照片（暂未实现 OCR）
+  // 处理导入照片
   if (type === '__import_photo__' && file) {
     handleImportPhoto(file);
     return;
@@ -213,17 +215,6 @@ function handleTypeSelection(type, resume, draftId, file) {
 // ---------- 条目列表 ----------
 
 function showItemList() {
-  const saveCurrentDraft = () => {
-    if (state.reportType && state.items.length > 0) {
-      saveDraft(state.reportType, {
-        items: state.items,
-        headerInfo: state.headerInfo,
-      }).then(newId => {
-        state.currentDraftId = newId;
-      }).catch(e => console.error('保存草稿失败:', e));
-    }
-  };
-
   renderItemList({
     reportType: state.reportType,
     items: state.items,
@@ -232,7 +223,7 @@ function showItemList() {
     onEdit: (index) => showItemForm(index),
     onDelete: (index) => {
       state.items.splice(index, 1);
-      saveCurrentDraft();
+      saveDraftWithId();
       showItemList();
     },
     onGenerate: () => {
@@ -243,8 +234,7 @@ function showItemList() {
       showGeneratePage();
     },
     onBack: () => {
-      saveCurrentDraft();
-      showHome();
+      saveDraftWithId().then(() => showHome());
     },
   });
 }
@@ -264,15 +254,7 @@ function showItemForm(editIndex, photoOverride) {
       } else {
         state.items.push(savedItem);
       }
-      if (state.reportType) {
-        saveDraft(state.reportType, {
-          items: state.items,
-          headerInfo: state.headerInfo,
-        }).then(newId => {
-          state.currentDraftId = newId;
-        }).catch(e => console.error('保存草稿失败:', e));
-      }
-      showItemList();
+      saveDraftWithId().then(() => showItemList());
     },
     onCancel: () => showItemList(),
     onOptimize: (text) => showOptimizePage(text, editIndex),
