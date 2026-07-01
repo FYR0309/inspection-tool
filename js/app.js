@@ -10,6 +10,7 @@ import {
   renderItemForm,
   renderOptimizePage,
   showEditModal,
+  showMergePanel,
   renderGeneratePage,
 } from './ui.js?v=20260701a';
 
@@ -30,6 +31,69 @@ const state = {
 
 window._showToast = showToast;
 
+// ---------- 导入处理 ----------
+
+async function handleImportDocx(file) {
+  showToast('正在解析文件...');
+
+  let parsed;
+  try {
+    const { parseDocx } = await import('./importer.js?v=20260701a');
+    parsed = await parseDocx(file);
+  } catch (e) {
+    showToast(e.message || '文件解析失败，请确认是工具生成的报告');
+    return;
+  }
+
+  const drafts = await listDrafts();
+
+  showMergePanel({
+    parsed,
+    drafts,
+    onConfirm: async (targetDraftId, reportType) => {
+      state.reportType = reportType;
+
+      if (targetDraftId) {
+        const existing = await getDraft(targetDraftId);
+        if (existing) {
+          state.items = [...(existing.items || []), ...parsed.items];
+          state.headerInfo = existing.headerInfo || {
+            company: FIXED_COMPANY, department: FIXED_DEPARTMENT,
+            date: getTodayStr(), inspectionDate: getTodayStr(),
+            halfMonth: reportType === '5s' ? 'first' : null,
+          };
+          state.currentDraftId = targetDraftId;
+        }
+      } else {
+        state.items = parsed.items;
+        state.headerInfo = {
+          company: FIXED_COMPANY, department: FIXED_DEPARTMENT,
+          date: getTodayStr(), inspectionDate: getTodayStr(),
+          halfMonth: reportType === '5s' ? 'first' : null,
+        };
+        state.currentDraftId = null;
+      }
+
+      if (state.items.length > 0) {
+        saveDraft(state.reportType, {
+          items: state.items,
+          headerInfo: state.headerInfo,
+        }).then(newId => { state.currentDraftId = newId; })
+          .catch(e => console.error('保存草稿失败:', e));
+      }
+
+      showToast(`已导入 ${parsed.items.length} 条`);
+      showItemList();
+    },
+    onCancel: () => {},
+  });
+}
+
+async function handleImportPhoto(file) {
+  // 照片 OCR 将在 Task 11 实现
+  showToast('照片导入功能即将上线');
+}
+
 // ---------- 首页 ----------
 
 function showHome() {
@@ -45,7 +109,18 @@ function showHome() {
   });
 }
 
-function handleTypeSelection(type, resume, draftId) {
+function handleTypeSelection(type, resume, draftId, file) {
+  // 处理导入 .docx
+  if (type === '__import_docx__' && file) {
+    handleImportDocx(file);
+    return;
+  }
+  // 处理导入照片（暂未实现 OCR）
+  if (type === '__import_photo__' && file) {
+    handleImportPhoto(file);
+    return;
+  }
+
   state.reportType = type;
 
   const defaults = {

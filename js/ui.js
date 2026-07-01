@@ -92,6 +92,14 @@ function renderHomePage({ presets, drafts, onSelectType }) {
         🏢 ${escapeHtml(FIXED_COMPANY)} · 👤 ${escapeHtml(FIXED_DEPARTMENT)} · 📅 ${today}
       </div>
 
+      <div class="card import-card" data-action="import-file" style="border:2px dashed var(--primary);text-align:center;padding:14px;background:#f0f7ff;">
+        <div style="font-size:28px;margin-bottom:4px;">📥</div>
+        <div style="font-weight:600;color:var(--primary);">导入报告文件</div>
+        <div style="font-size:11px;color:#999;">支持 Word 报告 (.docx) 或照片</div>
+      </div>
+
+      <div style="font-size:11px;color:#999;margin:10px 0;text-align:center;">—— 或新建报告 ——</div>
+
       ${typeCards.map(c => `
         <div class="card card-type-${c.type}" data-action="select-type" data-type="${c.type}">
           <span style="font-size:28px;float:left;margin-right:10px;">${c.icon}</span>
@@ -125,6 +133,23 @@ function renderHomePage({ presets, drafts, onSelectType }) {
     const card = e.target.closest('[data-action]');
     if (!card) return;
     const action = card.dataset.action;
+    if (action === 'import-file') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.docx,image/*';
+      input.onchange = (ev) => {
+        const file = ev.target.files[0];
+        if (!file) return;
+        if (file.name.endsWith('.docx')) {
+          onSelectType('__import_docx__', false, null, file);
+        } else if (file.type.startsWith('image/')) {
+          onSelectType('__import_photo__', false, null, file);
+        }
+      };
+      input.click();
+      return;
+    }
+
     if (action === 'select-type') {
       onSelectType(card.dataset.type);
     } else if (action === 'resume') {
@@ -853,6 +878,113 @@ function renderGeneratePage({ reportType, headerInfo, items, onConfirm, onBack, 
   }
 }
 
+// ---------- 导入合并面板 ----------
+
+/**
+ * 显示导入合并目标选择面板
+ */
+function showMergePanel({ parsed, drafts, onConfirm, onCancel }) {
+  const recentDraft = drafts.length > 0 ? drafts[0] : null;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:50;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:20px;max-height:80vh;overflow-y:auto;">
+      <h3 style="margin-bottom:4px;">📥 导入预览</h3>
+      <p style="font-size:13px;color:#999;margin-bottom:14px;">识别到 <strong>${parsed.items.length}</strong> 条问题</p>
+
+      <p style="font-size:13px;color:#999;margin-bottom:8px;">选择导入目标：</p>
+
+      ${recentDraft ? `
+        <div class="merge-option selected" data-target="recent" style="border:2px solid var(--primary);border-radius:10px;padding:12px;margin-bottom:8px;background:#f0f7ff;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="background:var(--primary);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">✓</span>
+            <div>
+              <div style="font-weight:600;">合并到最近编辑的草稿</div>
+              <div style="font-size:12px;color:#999;">${recentDraft.data?.items?.length || 0} 条 · ${new Date(recentDraft.updatedAt).toLocaleDateString('zh-CN')}</div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      ${drafts.filter(d => d !== recentDraft).map(d => `
+        <div class="merge-option" data-target="${d.id}" style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="border:1px solid #ccc;color:#ccc;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">○</span>
+            <div>
+              <div style="font-weight:600;font-size:14px;">合并到其他草稿</div>
+              <div style="font-size:12px;color:#999;">${d.data?.items?.length || 0} 条 · ${new Date(d.updatedAt).toLocaleDateString('zh-CN')}</div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+
+      <div class="merge-option" data-target="new" style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="border:1px solid #ccc;color:#ccc;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">○</span>
+          <div>
+            <div style="font-weight:600;font-size:14px;">创建新草稿</div>
+            <div style="font-size:12px;color:#999;">不合并，单独保存</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="merge-confirm-btn" style="font-size:16px;">确认导入</button>
+      <button class="btn btn-outline btn-block" id="merge-cancel-btn" style="margin-top:8px;">取消</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  let selectedTarget = recentDraft ? 'recent' : 'new';
+
+  // 选项点击切换
+  overlay.querySelectorAll('.merge-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      overlay.querySelectorAll('.merge-option').forEach(o => {
+        o.classList.remove('selected');
+        o.style.border = '1px solid #e0e0e0';
+        o.style.background = '#fff';
+        const check = o.querySelector('span');
+        check.style.background = 'transparent';
+        check.style.color = '#ccc';
+        check.style.border = '1px solid #ccc';
+        check.textContent = '○';
+      });
+      opt.classList.add('selected');
+      opt.style.border = '2px solid var(--primary)';
+      opt.style.background = '#f0f7ff';
+      const check = opt.querySelector('span');
+      check.style.background = 'var(--primary)';
+      check.style.color = '#fff';
+      check.style.border = 'none';
+      check.textContent = '✓';
+      selectedTarget = opt.dataset.target;
+    });
+  });
+
+  overlay.querySelector('#merge-confirm-btn').onclick = () => {
+    let targetDraftId = null;
+    if (selectedTarget === 'new') {
+      targetDraftId = null;
+    } else if (selectedTarget === 'recent') {
+      targetDraftId = recentDraft ? recentDraft.id : null;
+    } else {
+      targetDraftId = selectedTarget;
+    }
+    overlay.remove();
+    onConfirm(targetDraftId, parsed.reportType || 'safety');
+  };
+
+  overlay.querySelector('#merge-cancel-btn').onclick = () => {
+    overlay.remove();
+    onCancel();
+  };
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) { overlay.remove(); onCancel(); }
+  });
+}
+
 export {
   showToast, FIXED_COMPANY, FIXED_DEPARTMENT,
   renderHomePage,
@@ -861,5 +993,6 @@ export {
   renderOptimizePage,
   showEditModal,
   showImageEditPanel,
+  showMergePanel,
   renderGeneratePage,
 };
